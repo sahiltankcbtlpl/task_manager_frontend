@@ -10,6 +10,5 @@ This app consumes the backend APIs and provides a clean, dynamic UI.
 
 - React (Vite)
 - Chakra UI
-- Axios
 
 
