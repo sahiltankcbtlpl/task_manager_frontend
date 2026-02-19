@@ -1,0 +1,18 @@
+export const ROUTES = {
+    LOGIN: '/login',
+    DASHBOARD: '/',
+    STAFF: '/staff',
+    CREATE_STAFF: '/staff/create',
+    TASKS: '/tasks',
+    CREATE_TASK: '/tasks/create',
+    PERMISSIONS: '/permissions',
+    CREATE_PERMISSION: '/permissions/create',
+    EDIT_PERMISSION: '/permissions/edit/:id',
+    ROLES: '/roles',
+    CREATE_ROLE: '/roles/create',
+    EDIT_ROLE: '/roles/edit/:id',
+    TASK_STATUS: '/task-status',
+    CREATE_TASK_STATUS: '/task-status/create',
+    EDIT_TASK_STATUS: '/task-status/edit/:id',
+    NOT_FOUND: '*',
+};
