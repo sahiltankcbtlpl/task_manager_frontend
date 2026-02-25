@@ -14,5 +14,9 @@ export const ROUTES = {
     TASK_STATUS: '/task-status',
     CREATE_TASK_STATUS: '/task-status/create',
     EDIT_TASK_STATUS: '/task-status/edit/:id',
+    PROJECTS: '/projects',
+    CREATE_PROJECT: '/projects/create',
+    EDIT_PROJECT: '/projects/edit/:id',
+    TEAM: '/team',
     NOT_FOUND: '*',
 };

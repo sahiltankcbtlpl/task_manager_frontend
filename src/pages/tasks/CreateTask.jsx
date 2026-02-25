@@ -5,6 +5,7 @@ import {
     useToast,
     HStack,
     Image,
+    IconButton,
 } from '@chakra-ui/react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -41,16 +42,19 @@ const CreateTask = () => {
         description: '',
         assignee: '',
         taskStatus: '',
-        attachment: null,
+        attachments: [],
+        videoAttachments: [],
     });
 
-    const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewUrls, setPreviewUrls] = useState([]);
+    const [videoPreviewUrls, setVideoPreviewUrls] = useState([]);
 
     useEffect(() => {
         return () => {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            videoPreviewUrls.forEach(url => URL.revokeObjectURL(url));
         };
-    }, [previewUrl]);
+    }, [previewUrls, videoPreviewUrls]);
 
     /* ---------------- Fetch dropdown data ---------------- */
     useEffect(() => {
@@ -95,8 +99,22 @@ const CreateTask = () => {
         try {
             const formData = new FormData();
             Object.entries(values).forEach(([key, value]) => {
-                if (value) formData.append(key, value);
+                if (key !== 'attachments' && key !== 'videoAttachments' && value) {
+                    formData.append(key, value);
+                }
             });
+
+            if (values.attachments) {
+                values.attachments.forEach(file => {
+                    formData.append('attachments', file);
+                });
+            }
+
+            if (values.videoAttachments) {
+                values.videoAttachments.forEach(file => {
+                    formData.append('videoAttachments', file);
+                });
+            }
 
             await createTask(formData);
 
@@ -132,7 +150,7 @@ const CreateTask = () => {
                     validationSchema={CreateTaskSchema}
                     onSubmit={handleSubmit}
                 >
-                    {({ isSubmitting, setFieldValue }) => (
+                    {({ isSubmitting, setFieldValue, values }) => (
                         <Form>
                             <VStack spacing={4} align="stretch">
                                 <Input
@@ -163,37 +181,106 @@ const CreateTask = () => {
                                 </CanAccess>
 
                                 <Box>
-                                    {previewUrl && (
+                                    {previewUrls.length > 0 && (
                                         <Box mb={4} p={3} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.100">
-                                            <Heading size="xs" mb={2} color="blue.700">File Preview:</Heading>
-                                            <Box borderRadius="md" overflow="hidden" border="1px" borderColor="blue.200" bg="white">
-                                                <Image
-                                                    src={previewUrl}
-                                                    alt="Attachment preview"
-                                                    maxH="200px"
-                                                    objectFit="contain"
-                                                    mx="auto"
-                                                />
-                                            </Box>
+                                            <Heading size="xs" mb={2} color="blue.700">Image/Doc Previews:</Heading>
+                                            <HStack spacing={4} wrap="wrap">
+                                                {previewUrls.map((url, idx) => (
+                                                    <Box key={idx} position="relative" borderRadius="md" overflow="hidden" border="1px" borderColor="blue.200" bg="white">
+                                                        <IconButton
+                                                            aria-label="Remove image"
+                                                            icon={<span>✕</span>}
+                                                            size="xs"
+                                                            colorScheme="red"
+                                                            position="absolute"
+                                                            top={1}
+                                                            right={1}
+                                                            onClick={() => {
+                                                                const newFiles = values.attachments.filter((_, i) => i !== idx);
+                                                                setFieldValue('attachments', newFiles);
+                                                                const newUrls = [...previewUrls];
+                                                                URL.revokeObjectURL(newUrls[idx]);
+                                                                newUrls.splice(idx, 1);
+                                                                setPreviewUrls(newUrls);
+                                                            }}
+                                                        />
+                                                        <Image src={url} alt={`preview-${idx}`} maxH="100px" objectFit="contain" />
+                                                    </Box>
+                                                ))}
+                                            </HStack>
                                         </Box>
                                     )}
                                     <Input
-                                        name="attachment"
-                                        label="Attachment (Optional)"
+                                        name="attachments"
+                                        label="Image/Doc Attachments (Optional)"
                                         type="file"
-                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.mp4"
+                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                                        multiple
                                         value={undefined}
                                         onChange={e => {
-                                            const file = e.currentTarget.files[0];
-                                            setFieldValue('attachment', file);
+                                            const files = Array.from(e.currentTarget.files);
+                                            const newFiles = [...values.attachments, ...files];
+                                            setFieldValue('attachments', newFiles);
 
-                                            // Handle preview
-                                            if (previewUrl) URL.revokeObjectURL(previewUrl);
-                                            if (file && file.type.startsWith('image/')) {
-                                                setPreviewUrl(URL.createObjectURL(file));
-                                            } else {
-                                                setPreviewUrl(null);
-                                            }
+                                            previewUrls.forEach(url => URL.revokeObjectURL(url));
+                                            const newUrls = newFiles
+                                                .filter(f => f.type.startsWith('image/'))
+                                                .map(f => URL.createObjectURL(f));
+                                            setPreviewUrls(newUrls);
+                                            e.currentTarget.value = '';
+                                        }}
+                                    />
+                                </Box>
+
+                                <Box>
+                                    {videoPreviewUrls.length > 0 && (
+                                        <Box mb={4} p={3} bg="purple.50" borderRadius="md" border="1px" borderColor="purple.100">
+                                            <Heading size="xs" mb={2} color="purple.700">Video Previews:</Heading>
+                                            <HStack spacing={4} wrap="wrap">
+                                                {videoPreviewUrls.map((url, idx) => (
+                                                    <Box key={idx} position="relative" borderRadius="md" overflow="hidden" border="1px" borderColor="purple.200" bg="black">
+                                                        <IconButton
+                                                            aria-label="Remove video"
+                                                            icon={<span>✕</span>}
+                                                            size="xs"
+                                                            colorScheme="red"
+                                                            position="absolute"
+                                                            top={1}
+                                                            right={1}
+                                                            zIndex={2}
+                                                            onClick={() => {
+                                                                const newFiles = values.videoAttachments.filter((_, i) => i !== idx);
+                                                                setFieldValue('videoAttachments', newFiles);
+                                                                const newUrls = [...videoPreviewUrls];
+                                                                URL.revokeObjectURL(newUrls[idx]);
+                                                                newUrls.splice(idx, 1);
+                                                                setVideoPreviewUrls(newUrls);
+                                                            }}
+                                                        />
+                                                        <video src={url} controls style={{ maxHeight: '100px' }} />
+                                                    </Box>
+                                                ))}
+                                            </HStack>
+                                        </Box>
+                                    )}
+                                    <Input
+                                        name="videoAttachments"
+                                        label="Video Attachments (Optional)"
+                                        type="file"
+                                        accept=".mp4,.webm,.ogg"
+                                        multiple
+                                        value={undefined}
+                                        onChange={e => {
+                                            const files = Array.from(e.currentTarget.files);
+                                            const newFiles = [...values.videoAttachments, ...files];
+                                            setFieldValue('videoAttachments', newFiles);
+
+                                            videoPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+                                            const newUrls = newFiles
+                                                .filter(f => f.type.startsWith('video/'))
+                                                .map(f => URL.createObjectURL(f));
+                                            setVideoPreviewUrls(newUrls);
+                                            e.currentTarget.value = '';
                                         }}
                                     />
                                 </Box>

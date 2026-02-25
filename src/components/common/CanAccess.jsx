@@ -5,7 +5,7 @@ const CanAccess = ({ permission, children }) => {
 
     if (!user) return null;
 
-    if (user.role === 'Super Admin') {
+    if (user.role === 'Super Admin' || user.role?.name === 'Super Admin') {
         return <>{children}</>;
     }
 

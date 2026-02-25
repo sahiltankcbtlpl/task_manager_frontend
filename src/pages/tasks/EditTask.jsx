@@ -1,4 +1,4 @@
-import { Box, Heading, VStack, useToast, Spinner, Center, HStack, Image } from '@chakra-ui/react';
+import { Box, Heading, VStack, useToast, Spinner, Center, HStack, Image, IconButton } from '@chakra-ui/react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import Input from '../../components/common/Input';
@@ -31,15 +31,23 @@ const EditTask = () => {
     const [initialValues, setInitialValues] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const [currentAttachment, setCurrentAttachment] = useState(null);
-    const [isFileRemoved, setIsFileRemoved] = useState(false);
-    const [previewUrl, setPreviewUrl] = useState(null);
+    const [legacyAttachment, setLegacyAttachment] = useState(null);
+    const [isLegacyRemoved, setIsLegacyRemoved] = useState(false);
+
+    const [existingAttachments, setExistingAttachments] = useState([]);
+    const [existingVideoAttachments, setExistingVideoAttachments] = useState([]);
+    const [removedAttachments, setRemovedAttachments] = useState([]);
+    const [removedVideoAttachments, setRemovedVideoAttachments] = useState([]);
+
+    const [previewUrls, setPreviewUrls] = useState([]);
+    const [videoPreviewUrls, setVideoPreviewUrls] = useState([]);
 
     useEffect(() => {
         return () => {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            videoPreviewUrls.forEach(url => URL.revokeObjectURL(url));
         };
-    }, [previewUrl]);
+    }, [previewUrls, videoPreviewUrls]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -74,12 +82,13 @@ const EditTask = () => {
                     description: taskData.description || '',
                     assignee: taskData.assignee?._id || taskData.assignee || '', // Handle populated or ID
                     taskStatus: taskData.taskStatus?._id || taskData.taskStatus || '',
-                    attachment: null // For new file upload
+                    attachments: [], // For new file upload
+                    videoAttachments: []
                 });
 
-                if (taskData.attachment) {
-                    setCurrentAttachment(taskData.attachment);
-                }
+                if (taskData.attachment) setLegacyAttachment(taskData.attachment);
+                if (taskData.attachments) setExistingAttachments(taskData.attachments);
+                if (taskData.videoAttachments) setExistingVideoAttachments(taskData.videoAttachments);
 
             } catch (err) {
                 console.error('Failed to fetch data', err);
@@ -97,13 +106,19 @@ const EditTask = () => {
         fetchData();
     }, [id, navigate, toast]);
 
-    const handleRemoveFile = () => {
-        setCurrentAttachment(null);
-        setIsFileRemoved(true);
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-            setPreviewUrl(null);
-        }
+    const handleRemoveLegacy = () => {
+        setLegacyAttachment(null);
+        setIsLegacyRemoved(true);
+    };
+
+    const handleRemoveExistingAttachment = (id) => {
+        setRemovedAttachments(prev => [...prev, id]);
+        setExistingAttachments(prev => prev.filter(att => att._id !== id));
+    };
+
+    const handleRemoveExistingVideo = (id) => {
+        setRemovedVideoAttachments(prev => [...prev, id]);
+        setExistingVideoAttachments(prev => prev.filter(att => att._id !== id));
     };
 
     const handleSubmit = async (values, actions) => {
@@ -115,11 +130,22 @@ const EditTask = () => {
             if (values.assignee) {
                 formData.append('assignee', values.assignee);
             }
-            if (values.attachment) {
-                formData.append('attachment', values.attachment);
+
+            if (values.attachments) {
+                values.attachments.forEach(file => formData.append('attachments', file));
             }
-            if (isFileRemoved && !values.attachment) {
-                formData.append('removeAttachment', 'true');
+            if (values.videoAttachments) {
+                values.videoAttachments.forEach(file => formData.append('videoAttachments', file));
+            }
+
+            if (removedAttachments.length > 0) {
+                formData.append('removedAttachments', JSON.stringify(removedAttachments));
+            }
+            if (removedVideoAttachments.length > 0) {
+                formData.append('removedVideoAttachments', JSON.stringify(removedVideoAttachments));
+            }
+            if (isLegacyRemoved) {
+                formData.append('removeLegacyAttachment', 'true');
             }
 
             // For update, we might not need to send all fields if using PATCH, but PUT usually expects all or handles partials.
@@ -164,7 +190,7 @@ const EditTask = () => {
                     onSubmit={handleSubmit}
                     enableReinitialize
                 >
-                    {({ isSubmitting, setFieldValue }) => (
+                    {({ isSubmitting, setFieldValue, values }) => (
                         <Form>
                             <VStack spacing={4} align="stretch">
                                 <Input
@@ -198,71 +224,180 @@ const EditTask = () => {
                                 />
 
                                 <Box>
-                                    <Heading size="sm" mb={2}>Attachment</Heading>
-                                    {currentAttachment && (
+                                    <Heading size="sm" mb={4}>Images & Documents</Heading>
+
+                                    {/* Existing Images */}
+                                    {existingAttachments.length > 0 && (
+                                        <Box mb={4} p={3} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
+                                            <VStack align="stretch" spacing={3}>
+                                                {existingAttachments.map(att => (
+                                                    <Box key={att._id} p={2} bg="white" borderRadius="sm" border="1px" borderColor="gray.200">
+                                                        <HStack justify="space-between">
+                                                            <HStack>
+                                                                {att.mimetype?.startsWith('image/') && (
+                                                                    <Image src={`${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}/${att.path.replace(/\\/g, '/')}`} maxH="40px" objectFit="contain" />
+                                                                )}
+                                                                <VStack align="start" spacing={0}>
+                                                                    <Box fontWeight="medium" fontSize="sm">{att.filename}</Box>
+                                                                    <Box fontSize="xs" color="gray.500">{(att.size / 1024).toFixed(2)} KB</Box>
+                                                                </VStack>
+                                                            </HStack>
+                                                            <Button size="xs" colorScheme="red" variant="outline" onClick={() => handleRemoveExistingAttachment(att._id)}>Remove</Button>
+                                                        </HStack>
+                                                    </Box>
+                                                ))}
+                                            </VStack>
+                                        </Box>
+                                    )}
+
+                                    {/* Legacy Attachment */}
+                                    {legacyAttachment && (
                                         <Box mb={4} p={3} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
                                             <VStack align="stretch" spacing={3}>
                                                 <HStack justify="space-between">
                                                     <VStack align="start" spacing={0}>
-                                                        <Box fontWeight="medium">Current File: {currentAttachment.filename}</Box>
-                                                        <Box fontSize="sm" color="gray.500">
-                                                            {(currentAttachment.size / 1024).toFixed(2)} KB
-                                                        </Box>
+                                                        <Box fontWeight="medium" fontSize="sm">Legacy File: {legacyAttachment.filename}</Box>
+                                                        <Box fontSize="xs" color="gray.500">{(legacyAttachment.size / 1024).toFixed(2)} KB</Box>
                                                     </VStack>
-                                                    <Button size="sm" colorScheme="red" variant="outline" onClick={handleRemoveFile}>
-                                                        Remove
-                                                    </Button>
+                                                    <Button size="xs" colorScheme="red" variant="outline" onClick={handleRemoveLegacy}>Remove</Button>
                                                 </HStack>
-                                                {currentAttachment.mimetype?.startsWith('image/') && (
-                                                    <Box borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
-                                                        <Image
-                                                            src={`${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}/${currentAttachment.path.replace(/\\/g, '/')}`}
-                                                            alt="Current attachment"
-                                                            maxH="200px"
-                                                            objectFit="contain"
-                                                            mx="auto"
-                                                        />
-                                                    </Box>
+                                                {legacyAttachment.mimetype?.startsWith('image/') && (
+                                                    <Image src={`${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}/${legacyAttachment.path.replace(/\\/g, '/')}`} maxH="100px" objectFit="contain" />
                                                 )}
                                             </VStack>
                                         </Box>
                                     )}
 
-                                    {previewUrl && (
+                                    {/* New Images Previews */}
+                                    {previewUrls.length > 0 && (
                                         <Box mb={4} p={3} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.100">
-                                            <Heading size="xs" mb={2} color="blue.700">New File Preview:</Heading>
-                                            <Box borderRadius="md" overflow="hidden" border="1px" borderColor="blue.200" bg="white">
-                                                <Image
-                                                    src={previewUrl}
-                                                    alt="New attachment preview"
-                                                    maxH="200px"
-                                                    objectFit="contain"
-                                                    mx="auto"
-                                                />
-                                            </Box>
+                                            <Heading size="xs" mb={2} color="blue.700">New Image Previews:</Heading>
+                                            <HStack spacing={4} wrap="wrap">
+                                                {previewUrls.map((url, idx) => (
+                                                    <Box key={idx} position="relative" borderRadius="md" overflow="hidden" border="1px" borderColor="blue.200" bg="white">
+                                                        <IconButton
+                                                            aria-label="Remove image"
+                                                            icon={<span>✕</span>}
+                                                            size="xs"
+                                                            colorScheme="red"
+                                                            position="absolute"
+                                                            top={1}
+                                                            right={1}
+                                                            onClick={() => {
+                                                                const newFiles = values.attachments.filter((_, i) => i !== idx);
+                                                                setFieldValue('attachments', newFiles);
+                                                                const newUrls = [...previewUrls];
+                                                                URL.revokeObjectURL(newUrls[idx]);
+                                                                newUrls.splice(idx, 1);
+                                                                setPreviewUrls(newUrls);
+                                                            }}
+                                                        />
+                                                        <Image src={url} alt={`preview-${idx}`} maxH="100px" objectFit="contain" />
+                                                    </Box>
+                                                ))}
+                                            </HStack>
                                         </Box>
                                     )}
 
                                     <Input
-                                        name="attachment"
-                                        label={currentAttachment ? "Change File (Optional)" : "Upload File (Optional)"}
+                                        name="attachments"
+                                        label="Add Images/Docs"
                                         type="file"
-                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.mp4"
-                                        sx={{ padding: 1 }}
+                                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                                        multiple
                                         value={undefined}
-                                        onChange={(event) => {
-                                            const file = event.currentTarget.files[0];
-                                            setFieldValue("attachment", file);
+                                        onChange={e => {
+                                            const files = Array.from(e.currentTarget.files);
+                                            const newFiles = [...values.attachments, ...files];
+                                            setFieldValue('attachments', newFiles);
 
-                                            // Handle preview
-                                            if (previewUrl) URL.revokeObjectURL(previewUrl);
-                                            if (file && file.type.startsWith('image/')) {
-                                                setPreviewUrl(URL.createObjectURL(file));
-                                                setIsFileRemoved(false);
-                                            } else {
-                                                setPreviewUrl(null);
-                                                if (file) setIsFileRemoved(false);
-                                            }
+                                            previewUrls.forEach(url => URL.revokeObjectURL(url));
+                                            const newUrls = newFiles
+                                                .filter(f => f.type.startsWith('image/'))
+                                                .map(f => URL.createObjectURL(f));
+                                            setPreviewUrls(newUrls);
+                                            e.currentTarget.value = '';
+                                        }}
+                                    />
+                                </Box>
+
+                                <Box>
+                                    <Heading size="sm" mb={4}>Videos</Heading>
+
+                                    {/* Existing Videos */}
+                                    {existingVideoAttachments.length > 0 && (
+                                        <Box mb={4} p={3} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
+                                            <VStack align="stretch" spacing={3}>
+                                                {existingVideoAttachments.map(att => (
+                                                    <Box key={att._id} p={2} bg="white" borderRadius="sm" border="1px" borderColor="gray.200">
+                                                        <HStack justify="space-between">
+                                                            <HStack>
+                                                                <VStack align="start" spacing={0}>
+                                                                    <Box fontWeight="medium" fontSize="sm">{att.filename}</Box>
+                                                                    <Box fontSize="xs" color="gray.500">{(att.size / (1024 * 1024)).toFixed(2)} MB</Box>
+                                                                </VStack>
+                                                            </HStack>
+                                                            <Button size="xs" colorScheme="red" variant="outline" onClick={() => handleRemoveExistingVideo(att._id)}>Remove</Button>
+                                                        </HStack>
+                                                        <Box mt={2} borderRadius="md" overflow="hidden" border="1px" borderColor="purple.200" bg="black" w="max-content">
+                                                            <video src={`${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}/${att.path.replace(/\\/g, '/')}`} controls style={{ maxHeight: '150px' }} />
+                                                        </Box>
+                                                    </Box>
+                                                ))}
+                                            </VStack>
+                                        </Box>
+                                    )}
+
+                                    {/* New Video Previews */}
+                                    {videoPreviewUrls.length > 0 && (
+                                        <Box mb={4} p={3} bg="purple.50" borderRadius="md" border="1px" borderColor="purple.100">
+                                            <Heading size="xs" mb={2} color="purple.700">New Video Previews:</Heading>
+                                            <HStack spacing={4} wrap="wrap">
+                                                {videoPreviewUrls.map((url, idx) => (
+                                                    <Box key={idx} position="relative" borderRadius="md" overflow="hidden" border="1px" borderColor="purple.200" bg="black">
+                                                        <IconButton
+                                                            aria-label="Remove video"
+                                                            icon={<span>✕</span>}
+                                                            size="xs"
+                                                            colorScheme="red"
+                                                            position="absolute"
+                                                            top={1}
+                                                            right={1}
+                                                            zIndex={2}
+                                                            onClick={() => {
+                                                                const newFiles = values.videoAttachments.filter((_, i) => i !== idx);
+                                                                setFieldValue('videoAttachments', newFiles);
+                                                                const newUrls = [...videoPreviewUrls];
+                                                                URL.revokeObjectURL(newUrls[idx]);
+                                                                newUrls.splice(idx, 1);
+                                                                setVideoPreviewUrls(newUrls);
+                                                            }}
+                                                        />
+                                                        <video src={url} controls style={{ maxHeight: '100px' }} />
+                                                    </Box>
+                                                ))}
+                                            </HStack>
+                                        </Box>
+                                    )}
+
+                                    <Input
+                                        name="videoAttachments"
+                                        label="Add Videos"
+                                        type="file"
+                                        accept=".mp4,.webm,.ogg"
+                                        multiple
+                                        value={undefined}
+                                        onChange={e => {
+                                            const files = Array.from(e.currentTarget.files);
+                                            const newFiles = [...values.videoAttachments, ...files];
+                                            setFieldValue('videoAttachments', newFiles);
+
+                                            videoPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+                                            const newUrls = newFiles
+                                                .filter(f => f.type.startsWith('video/'))
+                                                .map(f => URL.createObjectURL(f));
+                                            setVideoPreviewUrls(newUrls);
+                                            e.currentTarget.value = '';
                                         }}
                                     />
                                 </Box>

@@ -16,6 +16,10 @@ import EditPermission from './pages/permissions/EditPermission';
 import TaskStatusList from './pages/taskStatus/TaskStatusList';
 import CreateTaskStatus from './pages/taskStatus/CreateTaskStatus';
 import EditTaskStatus from './pages/taskStatus/EditTaskStatus';
+import ProjectList from './pages/projects/ProjectList';
+import CreateProject from './pages/projects/CreateProject';
+import EditProject from './pages/projects/EditProject';
+import TeamList from './pages/team/TeamList';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import MainLayout from './components/Layout/MainLayout';
 import { Routes, Route, Navigate } from 'react-router-dom';
@@ -30,6 +34,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/team" element={<TeamList />} />
 
           {/* Staff Routes */}
           <Route path="/staff" element={<StaffList />} />
@@ -55,6 +60,11 @@ function App() {
           <Route path="/task-status" element={<TaskStatusList />} />
           <Route path="/task-status/create" element={<CreateTaskStatus />} />
           <Route path="/task-status/edit/:id" element={<EditTaskStatus />} />
+
+          {/* Project Routes */}
+          <Route path="/projects" element={<ProjectList />} />
+          <Route path="/projects/create" element={<CreateProject />} />
+          <Route path="/projects/edit/:id" element={<EditProject />} />
 
           {/* Redirect root URL to dashboard, which redirects to login if not authenticated */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

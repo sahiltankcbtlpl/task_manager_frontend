@@ -3,6 +3,7 @@ import { FiMenu, FiChevronDown, FiUser } from 'react-icons/fi';
 import useAuth from '../../hooks/useAuth';
 import PropTypes from 'prop-types';
 import ProfileModal from './ProfileModal';
+import ProjectSelector from './ProjectSelector';
 
 const Header = ({ onOpenSidebar }) => {
     const { user, logout } = useAuth();
@@ -12,28 +13,32 @@ const Header = ({ onOpenSidebar }) => {
         <Flex
             as="header"
             w="full"
-            h="60px"
+            h="80px"
             bg="white"
             borderBottom="1px"
             borderColor="gray.200"
             align="center"
             justify="space-between"
-            px={4}
+            px={6}
             position="sticky"
             top="0"
             zIndex="banner"
         >
-            <IconButton
-                icon={<FiMenu />}
-                aria-label="Open Menu"
-                display={{ base: 'flex', md: 'none' }}
-                onClick={onOpenSidebar}
-                variant="ghost"
-            />
+            <Flex align="center">
+                <IconButton
+                    icon={<FiMenu />}
+                    aria-label="Open Menu"
+                    display={{ base: 'flex', md: 'none' }}
+                    onClick={onOpenSidebar}
+                    variant="ghost"
+                    mr={4}
+                />
 
-            <Text fontSize="lg" fontWeight="semibold" ml={{ base: 2, md: 0 }}>
-                {/* Page Title could be dynamic here */}
-            </Text>
+                {/* Project Selector Component inserted here */}
+                <Box display={{ base: 'none', md: 'block' }}>
+                    <ProjectSelector />
+                </Box>
+            </Flex>
 
             <Flex align="center">
                 <Menu>

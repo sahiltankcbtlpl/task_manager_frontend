@@ -6,6 +6,7 @@ import App from './App';
 import theme from './theme/chakra.theme';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ProjectProvider } from './context/ProjectContext';
 import './index.css'; // Keep global styles if any
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <SocketProvider>
-          <App />
+          <ProjectProvider>
+            <App />
+          </ProjectProvider>
         </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
