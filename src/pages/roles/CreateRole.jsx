@@ -11,13 +11,14 @@ const CreateRole = () => {
     const handleSubmit = async (values, actions) => {
         try {
             await createRole(values);
-            toast({ title: 'Role Created', status: 'success' });
+            toast({ title: 'Role Created', status: 'success', duration: 3000 });
             navigate(ROUTES.ROLES);
         } catch (error) {
             toast({
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to create role',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

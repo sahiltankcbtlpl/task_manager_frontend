@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { createStaff } from '../../api/user.api';
 import { getRoles } from '../../api/role.api';
 import { ROUTES } from '../../config/routes.config';
+import { ROLES } from '../../constants/roles';
 import Input from '../../components/common/Input';
 
 const CreateStaff = () => {
@@ -33,7 +34,8 @@ const CreateStaff = () => {
         const fetchRoles = async () => {
             try {
                 const data = await getRoles();
-                setRoles(data);
+                const filteredRoles = data.filter(r => (r.name || r) !== ROLES.ADMIN);
+                setRoles(filteredRoles);
             } catch (error) {
                 toast({
                     title: 'Error fetching roles',

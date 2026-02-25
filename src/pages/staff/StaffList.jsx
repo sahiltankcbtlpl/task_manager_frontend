@@ -22,6 +22,8 @@ import SearchBar from '../../components/common/SearchBar';
 import TableFilter from '../../components/common/TableFilter';
 import { hasPermission } from '../../utils/permissions';
 import { getRoles } from '../../api/role.api';
+import { ROLES } from '../../constants/roles';
+import useDebounce from '../../hooks/useDebounce';
 
 const StaffList = () => {
     const [staff, setStaff] = useState([]);
@@ -32,23 +34,32 @@ const StaffList = () => {
 
     const [roleOptions, setRoleOptions] = useState([]);
     const [roleFilter, setRoleFilter] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+    const fetchOptions = async () => {
+        try {
+            const rolesData = await getRoles();
+            const filteredRoles = rolesData.filter(r => (r.name || r) !== ROLES.ADMIN);
+            setRoleOptions(filteredRoles.map(r => ({ label: r.name || r, value: r._id || r })));
+        } catch (error) {
+            console.error('Error fetching role options:', error);
+        }
+    };
 
     const fetchStaff = async () => {
         setLoading(true);
         try {
-            // Pass role filter to getStaffList
+            // Pass role filter and search to getStaffList
             const params = {};
             if (roleFilter) params.role = roleFilter;
+            if (debouncedSearchTerm) params.search = debouncedSearchTerm;
 
-            const [staffData, rolesData] = await Promise.all([
-                getStaffList(params),
-                getRoles()
-            ]);
+            const staffData = await getStaffList(params);
             setStaff(staffData);
-            setRoleOptions(rolesData.map(r => ({ label: r.name, value: r._id }))); // Use ID for value
         } catch (error) {
             toast({
-                title: 'Error fetching data',
+                title: 'Error fetching staff',
                 description: error.response?.data?.message || 'Something went wrong',
                 status: 'error',
             });
@@ -58,10 +69,14 @@ const StaffList = () => {
     };
 
     useEffect(() => {
+        fetchOptions();
+    }, []);
+
+    useEffect(() => {
         setCurrentPage(1);
         fetchStaff();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roleFilter]);
+    }, [roleFilter, debouncedSearchTerm]);
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this user?')) {
@@ -86,22 +101,14 @@ const StaffList = () => {
         }
     };
 
-
-
-    const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
 
     // Initial filtering by removing current user
     const baseStaff = staff.filter(user => user._id !== currentUser?._id);
 
-    // Search logic only (Role filtering moves to backend)
-    const filteredStaff = baseStaff.filter(user => {
-        const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-        return matchesSearch;
-    });
+    // Search logic moved to backend, filteredStaff is now just baseStaff
+    const filteredStaff = baseStaff;
 
     // Pagination logic
     const totalItems = filteredStaff.length;
@@ -114,7 +121,7 @@ const StaffList = () => {
     // Reset page on search
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [debouncedSearchTerm]);
 
 
 

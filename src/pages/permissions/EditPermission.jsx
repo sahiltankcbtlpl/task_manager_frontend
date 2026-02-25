@@ -50,12 +50,12 @@ const EditPermission = () => {
                         status: perm.status.toLowerCase()
                     });
                 } else {
-                    toast({ title: 'Error', description: 'Permission not found', status: 'error' });
+                    toast({ title: 'Error', description: 'Permission not found', status: 'error', duration: 3000 });
                     navigate(ROUTES.PERMISSIONS);
                 }
             } catch (error) {
                 console.error(error);
-                toast({ title: 'Error', description: 'Failed to load permission', status: 'error' });
+                toast({ title: 'Error', description: 'Failed to load permission', status: 'error', duration: 3000 });
             } finally {
                 setLoading(false);
             }
@@ -77,6 +77,7 @@ const EditPermission = () => {
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to update permission',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

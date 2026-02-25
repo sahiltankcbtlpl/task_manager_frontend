@@ -12,6 +12,7 @@ import DataTable from '../../components/common/DataTable';
 import SearchBar from '../../components/common/SearchBar';
 import useAuth from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
+import useDebounce from '../../hooks/useDebounce';
 
 const TaskStatusList = () => {
     const { user: currentUser } = useAuth();
@@ -21,13 +22,16 @@ const TaskStatusList = () => {
 
     // Search and Pagination State
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
 
     const fetchStatuses = async () => {
         try {
             setLoading(true);
-            const data = await getTaskStatuses();
+            const params = {};
+            if (debouncedSearchTerm) params.search = debouncedSearchTerm;
+            const data = await getTaskStatuses(params);
             setStatuses(data);
         } catch (error) {
             toast({
@@ -42,12 +46,12 @@ const TaskStatusList = () => {
 
     useEffect(() => {
         fetchStatuses();
-    }, []);
+    }, [debouncedSearchTerm]);
 
     // Helper to reset page on search
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [debouncedSearchTerm]);
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this status?')) return;
@@ -61,9 +65,7 @@ const TaskStatusList = () => {
     };
 
     // Filter Logic
-    const filteredStatuses = statuses.filter(status =>
-        status.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredStatuses = statuses;
 
     // Pagination Logic
     const totalItems = filteredStatuses.length;
@@ -73,7 +75,6 @@ const TaskStatusList = () => {
         currentPage * pageSize
     );
 
-    if (loading) return <Loader />;
 
 
 
@@ -128,7 +129,13 @@ const TaskStatusList = () => {
                 />
             </Flex>
 
-            {statuses.length === 0 ? (
+            {loading ? (
+                <DataTable
+                    columns={columns}
+                    data={[]}
+                    isLoading={true}
+                />
+            ) : statuses.length === 0 ? (
                 <EmptyState title="No Status" description="Create a status to get started" icon={FiList} />
             ) : (
                 <DataTable

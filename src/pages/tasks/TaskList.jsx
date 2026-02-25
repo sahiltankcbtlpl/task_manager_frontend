@@ -1,5 +1,5 @@
 import { Box, Heading, Flex, Badge, Button, IconButton, useToast, HStack } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getTasks, deleteTask, updateTask } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
@@ -18,6 +18,7 @@ import { getTaskStatuses } from '../../api/taskStatus.api';
 import { getStaffList } from '../../api/user.api';
 import { ROLES } from '../../constants/roles';
 import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
+import useDebounce from '../../hooks/useDebounce';
 
 const TaskList = () => {
     const [tasks, setTasks] = useState([]);
@@ -29,6 +30,8 @@ const TaskList = () => {
     const [assigneeOptions, setAssigneeOptions] = useState([]);
     const [statusFilter, setStatusFilter] = useState('');
     const [assigneeFilter, setAssigneeFilter] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     // Modal State
     const [selectedTask, setSelectedTask] = useState(null);
@@ -39,37 +42,44 @@ const TaskList = () => {
         setIsModalOpen(true);
     };
 
-    const fetchTasks = async () => {
+    const fetchOptions = async () => {
         try {
-            setLoading(true);
-            // Only fetch staff if not a Staff user (presumed they don't have permission/need)
             const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
-
-            // Pass filters to getTasks
-            const params = {};
-            if (statusFilter) params.status = statusFilter;
-            if (assigneeFilter) params.assignee = assigneeFilter;
-
-            const promises = [getTasks(params), getTaskStatuses()];
+            const promises = [getTaskStatuses()];
             if (!isStaff) {
                 promises.push(getStaffList());
             }
 
             const results = await Promise.all(promises);
-            const tasksData = results[0];
-            const statusesData = results[1];
-            const staffData = isStaff ? [] : results[2];
+            const statusesData = results[0];
+            const staffData = isStaff ? [] : results[1];
 
-            setTasks(tasksData);
-            setStatusOptions(statusesData
-                .map(s => ({ label: s.name, value: s._id }))
-            );
+            setStatusOptions(statusesData.map(s => ({ label: s.name, value: s._id })));
             if (!isStaff && staffData) {
-                setAssigneeOptions(staffData.map(u => ({ label: u.name, value: u._id })));
+                const filteredStaff = staffData.filter(u => {
+                    const roleName = u.role?.name || u.role;
+                    return roleName !== ROLES.ADMIN;
+                });
+                setAssigneeOptions(filteredStaff.map(u => ({ label: u.name, value: u._id })));
             }
         } catch (error) {
+            console.error('Error fetching options:', error);
+        }
+    };
+
+    const fetchTasks = async () => {
+        try {
+            setLoading(true);
+            const params = {};
+            if (statusFilter) params.status = statusFilter;
+            if (assigneeFilter) params.assignee = assigneeFilter;
+            if (debouncedSearchTerm) params.search = debouncedSearchTerm;
+
+            const tasksData = await getTasks(params);
+            setTasks(tasksData);
+        } catch (error) {
             toast({
-                title: 'Error fetching data',
+                title: 'Error fetching tasks',
                 description: error.response?.data?.message || 'Something went wrong',
                 status: 'error',
             });
@@ -79,28 +89,23 @@ const TaskList = () => {
     };
 
     useEffect(() => {
+        fetchOptions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
         setCurrentPage(1);
         fetchTasks();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [statusFilter, assigneeFilter]);
+    }, [statusFilter, assigneeFilter, debouncedSearchTerm]);
 
-    const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
 
-    // Search and Filter logic
-    const filteredTasks = tasks.filter(task => {
-        // Only search logic remains on client-side as requested
-        const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            task.assignee?.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-        return matchesSearch;
-    });
-
-    // Pagination logic
-    const totalItems = filteredTasks.length;
+    // Pagination logic (now based on all tasks from backend)
+    const totalItems = tasks.length;
     const totalPages = Math.ceil(totalItems / pageSize);
-    const paginatedTasks = filteredTasks.slice(
+    const paginatedTasks = tasks.slice(
         (currentPage - 1) * pageSize,
         currentPage * pageSize
     );
@@ -108,7 +113,7 @@ const TaskList = () => {
     // Reset page on search
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [debouncedSearchTerm]);
 
     const handleDelete = async (id) => {
         if (!window.confirm('Are you sure you want to delete this task?')) return;
@@ -123,23 +128,12 @@ const TaskList = () => {
 
     const handleUpdateTask = async (id, field, value) => {
         try {
-            await updateTask(id, { [field]: value });
-            // Optimistic update
-            setTasks(prev => prev.map(t => {
-                if (t._id === id) {
-                    if (field === 'taskStatus') {
-                        const newStatus = statusOptions.find(o => o.value === value);
-                        return { ...t, taskStatus: { _id: value, name: newStatus?.label, status: 'active' } }; // Simplified mock
-                    }
-                    if (field === 'assignee') {
-                        const newAssignee = assigneeOptions.find(o => o.value === value);
-                        return { ...t, assignee: { _id: value, name: newAssignee?.label } };
-                    }
-                }
-                return t;
-            }));
+            const updatedTaskData = await updateTask(id, { [field]: value });
+
+            // Update local state with the returned populated task
+            setTasks(prev => prev.map(t => (t._id === id ? updatedTaskData : t)));
+
             toast({ title: 'Task updated', status: 'success' });
-            fetchTasks(); // Refresh to get full data (e.g. populated fields if structure changes significantly)
         } catch (error) {
             toast({
                 title: 'Update failed',
@@ -149,73 +143,75 @@ const TaskList = () => {
         }
     };
 
-    if (loading) return <Loader />;
-
     const canUpdate = hasPermission(currentUser, 'tasks-update');
-
     const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
 
-    const columns = [
-        {
-            header: 'Title',
-            accessor: 'name',
-            render: (task) => (
-                <Box
-                    fontWeight="medium"
-                    cursor="pointer"
-                    color="brand.600"
-                    _hover={{ textDecoration: 'underline' }}
-                    onClick={() => handleViewTask(task)}
-                >
-                    {task.name}
-                </Box>
-            )
-        },
-        {
-            header: 'Status',
-            accessor: 'taskStatus',
-            render: (task) => (
-                <TableSelect
-                    value={task.taskStatus?._id || ''}
-                    options={statusOptions}
-                    onChange={(val) => handleUpdateTask(task._id, 'taskStatus', val)}
-                    isDisabled={!canUpdate}
-                    placeholder="Select Status"
-                />
-            )
+    const columns = useMemo(() => {
+        const cols = [
+            {
+                header: 'Title',
+                accessor: 'name',
+                render: (task) => (
+                    <Box
+                        fontWeight="medium"
+                        cursor="pointer"
+                        color="brand.600"
+                        _hover={{ textDecoration: 'underline' }}
+                        onClick={() => handleViewTask(task)}
+                    >
+                        {task.name}
+                    </Box>
+                )
+            },
+            {
+                header: 'Status',
+                accessor: 'taskStatus',
+                render: (task) => (
+                    <TableSelect
+                        value={task.taskStatus?._id || ''}
+                        options={statusOptions}
+                        onChange={(val) => handleUpdateTask(task._id, 'taskStatus', val)}
+                        isDisabled={!canUpdate}
+                        placeholder="Select Status"
+                    />
+                )
+            }
+        ];
+
+        if (!isStaff) {
+            cols.push({
+                header: 'Assignee',
+                accessor: 'assignee',
+                render: (task) => (
+                    <TableSelect
+                        value={task.assignee?._id || ''}
+                        options={assigneeOptions}
+                        onChange={(val) => handleUpdateTask(task._id, 'assignee', val)}
+                        isDisabled={!canUpdate || assigneeOptions.length === 0}
+                        placeholder="Unassigned"
+                    />
+                )
+            });
         }
-    ];
 
-    if (!isStaff) {
-        columns.push({
-            header: 'Assignee',
-            accessor: 'assignee',
-            render: (task) => (
-                <TableSelect
-                    value={task.assignee?._id || ''}
-                    options={assigneeOptions}
-                    onChange={(val) => handleUpdateTask(task._id, 'assignee', val)}
-                    isDisabled={!canUpdate || assigneeOptions.length === 0}
-                    placeholder="Unassigned"
-                />
-            )
-        });
-    }
+        if (hasPermission(currentUser, 'tasks-update') || hasPermission(currentUser, 'tasks-delete')) {
+            cols.push({
+                header: 'Actions',
+                render: (task) => (
+                    <TableActions
+                        onEdit={`${ROUTES.TASKS}/edit/${task._id}`}
+                        onDelete={() => handleDelete(task._id)}
+                        editPermission="tasks-update"
+                        deletePermission="tasks-delete"
+                        item={task}
+                    />
+                )
+            });
+        }
 
-    if (hasPermission(currentUser, 'tasks-update') || hasPermission(currentUser, 'tasks-delete')) {
-        columns.push({
-            header: 'Actions',
-            render: (task) => (
-                <TableActions
-                    onEdit={`${ROUTES.TASKS}/edit/${task._id}`}
-                    onDelete={() => handleDelete(task._id)}
-                    editPermission="tasks-update"
-                    deletePermission="tasks-delete"
-                    item={task}
-                />
-            )
-        });
-    }
+        return cols;
+    }, [statusOptions, assigneeOptions, canUpdate, isStaff, currentUser]);
+
 
     return (
         <Box>
@@ -252,7 +248,13 @@ const TaskList = () => {
                 )}
             </Flex>
 
-            {tasks.length === 0 ? (
+            {loading ? (
+                <DataTable
+                    columns={columns}
+                    data={[]}
+                    isLoading={true}
+                />
+            ) : tasks.length === 0 ? (
                 <EmptyState title="No Tasks" description="Create a task to get started" icon={FiCheckSquare} />
             ) : (
                 <DataTable

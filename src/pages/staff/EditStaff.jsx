@@ -23,6 +23,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getStaffById, updateStaff } from '../../api/user.api';
 import { getRoles } from '../../api/role.api';
 import { ROUTES } from '../../config/routes.config';
+import { ROLES } from '../../constants/roles';
 
 const EditStaff = () => {
     const { id } = useParams();
@@ -77,7 +78,8 @@ const EditStaff = () => {
                     getStaffById(id)
                 ]);
 
-                setRoles(rolesData);
+                const filteredRoles = rolesData.filter(r => (r.name || r) !== ROLES.ADMIN);
+                setRoles(filteredRoles);
                 formik.setValues({
                     name: staffData.name || '',
                     email: staffData.email || '',
@@ -89,6 +91,7 @@ const EditStaff = () => {
                     title: 'Error fetching data',
                     description: 'Could not load staff details or roles.',
                     status: 'error',
+                    duration: 3000,
                 });
                 navigate(ROUTES.STAFF);
             } finally {

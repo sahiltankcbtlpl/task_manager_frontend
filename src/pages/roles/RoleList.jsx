@@ -20,6 +20,7 @@ import DataTable from '../../components/common/DataTable';
 import SearchBar from '../../components/common/SearchBar';
 import { hasPermission } from '../../utils/permissions';
 import useAuth from '../../hooks/useAuth';
+import useDebounce from '../../hooks/useDebounce';
 
 const RoleList = () => {
     const [roles, setRoles] = useState([]);
@@ -27,10 +28,16 @@ const RoleList = () => {
     const toast = useToast();
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
 
     const fetchRoles = async () => {
         try {
-            const data = await getRoles();
+            const params = {};
+            if (debouncedSearchTerm) params.search = debouncedSearchTerm;
+            const data = await getRoles(params);
             setRoles(data);
         } catch (error) {
             toast({
@@ -45,7 +52,7 @@ const RoleList = () => {
 
     useEffect(() => {
         fetchRoles();
-    }, []);
+    }, [debouncedSearchTerm]);
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this role?')) {
@@ -66,14 +73,8 @@ const RoleList = () => {
         }
     };
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(5);
-
-    // Search logic
-    const filteredRoles = roles.filter(role =>
-        role.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Search and filtering moved to backend
+    const filteredRoles = roles;
 
     // Pagination logic
     const totalItems = filteredRoles.length;
@@ -86,7 +87,7 @@ const RoleList = () => {
     // Reset page on search
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [debouncedSearchTerm]);
 
     const columns = [
         {
@@ -121,7 +122,6 @@ const RoleList = () => {
         });
     }
 
-    if (loading) return <Center h="200px"><Spinner size="xl" /></Center>;
 
     return (
         <Box>

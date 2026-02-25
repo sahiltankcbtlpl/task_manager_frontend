@@ -23,8 +23,9 @@ const EditTaskStatus = () => {
             } catch (error) {
                 toast({
                     title: 'Error',
-                    description: 'Failed to delete',
+                    description: 'Failed to load status',
                     status: 'error',
+                    duration: 3000,
                 });
                 navigate(ROUTES.TASK_STATUS);
             } finally {
@@ -48,6 +49,7 @@ const EditTaskStatus = () => {
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to update status',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

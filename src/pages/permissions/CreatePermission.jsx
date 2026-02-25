@@ -32,6 +32,7 @@ const CreatePermission = () => {
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to create permission',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

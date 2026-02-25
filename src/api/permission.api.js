@@ -1,7 +1,7 @@
 import api from './axios';
 
-export const getPermissions = async () => {
-    const response = await api.get('/permissions');
+export const getPermissions = async (params) => {
+    const response = await api.get('/permissions', { params });
     return response.data;
 };
 

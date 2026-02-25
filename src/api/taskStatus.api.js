@@ -1,7 +1,7 @@
 import api from './axios';
 
-export const getTaskStatuses = async () => {
-    const response = await api.get('/taskStatus');
+export const getTaskStatuses = async (params) => {
+    const response = await api.get('/taskStatus', { params });
     return response.data;
 };
 

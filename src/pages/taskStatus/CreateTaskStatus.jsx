@@ -22,6 +22,7 @@ const CreateTaskStatus = () => {
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to create status',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

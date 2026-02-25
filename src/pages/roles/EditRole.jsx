@@ -22,7 +22,7 @@ const EditRole = () => {
                     permissions: role.permissions, // Assuming populated permissions
                 });
             } catch (error) {
-                toast({ title: 'Error', description: 'Failed to load role', status: 'error' });
+                toast({ title: 'Error', description: 'Failed to load role', status: 'error', duration: 3000 });
                 navigate(ROUTES.ROLES);
             } finally {
                 setLoading(false);
@@ -34,13 +34,14 @@ const EditRole = () => {
     const handleSubmit = async (values, actions) => {
         try {
             await updateRole(id, values);
-            toast({ title: 'Role Updated', status: 'success' });
+            toast({ title: 'Role Updated', status: 'success', duration: 3000 });
             navigate(ROUTES.ROLES);
         } catch (error) {
             toast({
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to update role',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);

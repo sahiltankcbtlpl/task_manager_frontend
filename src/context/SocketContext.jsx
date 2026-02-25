@@ -1,40 +1,55 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import io from 'socket.io-client';
-import useAuth from '../hooks/useAuth';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import PropTypes from 'prop-types';
+import useAuth from '../hooks/useAuth';
 
 const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
     const { user } = useAuth();
+    const socketRef = useRef(null);
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        let newSocket;
-        if (user) {
-            // Initialize socket only when user is logged in
-            newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5000', {
-                withCredentials: true,
-                autoConnect: false,
-            });
-
-            newSocket.connect();
-
-            newSocket.on('connect', () => {
-                console.log('Socket connected:', newSocket.id);
-            });
-
-            newSocket.on('disconnect', () => {
-                console.log('Socket disconnected');
-            });
-
-            setSocket(newSocket);
-
-            return () => {
-                newSocket.disconnect();
+        if (!user) {
+            // User logged out → disconnect socket
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
                 setSocket(null);
-            };
+            }
+            return;
         }
+
+        if (socketRef.current) return; // Prevent duplicate connections
+
+        const baseUrl = import.meta.env.VITE_API_URL
+            ? new URL(import.meta.env.VITE_API_URL).origin
+            : 'http://localhost:5000';
+
+        const newSocket = io(baseUrl, {
+            withCredentials: true,
+            transports: ['websocket'],
+            autoConnect: true,
+        });
+
+        socketRef.current = newSocket;
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('✅ Socket connected:', newSocket.id);
+        });
+
+        newSocket.on('disconnect', () => {
+            console.log('❌ Socket disconnected');
+        });
+
+        return () => {
+            newSocket.disconnect();
+            newSocket.off();
+            socketRef.current = null;
+            setSocket(null);
+        };
     }, [user]);
 
     return (
@@ -48,7 +63,12 @@ SocketProvider.propTypes = {
     children: PropTypes.node.isRequired,
 };
 
-export const useSocketContext = () => useContext(SocketContext);
+export const useSocketContext = () => {
+    const context = useContext(SocketContext);
+    if (context === undefined) {
+        throw new Error('useSocketContext must be used within SocketProvider');
+    }
+    return context;
+};
 
-// eslint-disable-next-line react-refresh/only-export-components
 export default SocketContext;

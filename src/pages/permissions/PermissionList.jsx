@@ -11,20 +11,26 @@ import { useEffect, useState } from 'react';
 import { getPermissions, deletePermission } from '../../api/permission.api';
 import { hasPermission } from '../../utils/permissions';
 import useAuth from '../../hooks/useAuth';
+import useDebounce from '../../hooks/useDebounce';
 
 const PermissionList = () => {
     const [permissions, setPermissions] = useState([]);
     const [filteredPermissions, setFilteredPermissions] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
+    const [loading, setLoading] = useState(true);
+    const toast = useToast();
     const { user: currentUser } = useAuth();
 
     const fetchPermissions = async () => {
         try {
-            const data = await getPermissions();
+            setLoading(true);
+            const params = {};
+            if (debouncedSearchTerm) params.search = debouncedSearchTerm;
+            const data = await getPermissions(params);
             setPermissions(data);
-            setFilteredPermissions(data);
         } catch (error) {
             console.error(error);
             toast({
@@ -32,26 +38,21 @@ const PermissionList = () => {
                 description: 'Failed to fetch permissions',
                 status: 'error'
             });
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
         fetchPermissions();
-    }, []);
+    }, [debouncedSearchTerm]);
 
-    useEffect(() => {
-        const results = permissions.filter(perm =>
-            perm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            perm.value.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        setFilteredPermissions(results);
-        setCurrentPage(1); // Reset to first page on search
-    }, [searchTerm, permissions]);
+    // Search and filtering moved to backend
 
     // Pagination logic
-    const totalItems = filteredPermissions.length;
+    const totalItems = permissions.length;
     const totalPages = Math.ceil(totalItems / pageSize);
-    const paginatedPermissions = filteredPermissions.slice(
+    const paginatedPermissions = permissions.slice(
         (currentPage - 1) * pageSize,
         currentPage * pageSize
     );
@@ -128,6 +129,7 @@ const PermissionList = () => {
             <DataTable
                 columns={columns}
                 data={paginatedPermissions}
+                isLoading={loading}
                 emptyMessage="No permissions found."
                 pagination={{
                     currentPage,

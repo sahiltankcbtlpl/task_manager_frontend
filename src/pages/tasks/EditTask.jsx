@@ -1,4 +1,4 @@
-import { Box, Heading, VStack, useToast, Spinner, Center, HStack } from '@chakra-ui/react';
+import { Box, Heading, VStack, useToast, Spinner, Center, HStack, Image } from '@chakra-ui/react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import Input from '../../components/common/Input';
@@ -33,6 +33,13 @@ const EditTask = () => {
 
     const [currentAttachment, setCurrentAttachment] = useState(null);
     const [isFileRemoved, setIsFileRemoved] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(null);
+
+    useEffect(() => {
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [previewUrl]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -80,6 +87,7 @@ const EditTask = () => {
                     title: 'Error',
                     description: 'Failed to load task details',
                     status: 'error',
+                    duration: 3000,
                 });
                 navigate(ROUTES.TASKS);
             } finally {
@@ -92,6 +100,10 @@ const EditTask = () => {
     const handleRemoveFile = () => {
         setCurrentAttachment(null);
         setIsFileRemoved(true);
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            setPreviewUrl(null);
+        }
     };
 
     const handleSubmit = async (values, actions) => {
@@ -126,6 +138,7 @@ const EditTask = () => {
                 title: 'Error',
                 description: error.response?.data?.message || 'Failed to update task',
                 status: 'error',
+                duration: 3000,
             });
         } finally {
             actions.setSubmitting(false);
@@ -187,20 +200,49 @@ const EditTask = () => {
                                 <Box>
                                     <Heading size="sm" mb={2}>Attachment</Heading>
                                     {currentAttachment && (
-                                        <Box mb={2} p={2} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
-                                            <HStack justify="space-between">
-                                                <VStack align="start" spacing={0}>
-                                                    <Box fontWeight="medium">Current File: {currentAttachment.filename}</Box>
-                                                    <Box fontSize="sm" color="gray.500">
-                                                        {(currentAttachment.size / 1024).toFixed(2)} KB
+                                        <Box mb={4} p={3} bg="gray.50" borderRadius="md" border="1px" borderColor="gray.200">
+                                            <VStack align="stretch" spacing={3}>
+                                                <HStack justify="space-between">
+                                                    <VStack align="start" spacing={0}>
+                                                        <Box fontWeight="medium">Current File: {currentAttachment.filename}</Box>
+                                                        <Box fontSize="sm" color="gray.500">
+                                                            {(currentAttachment.size / 1024).toFixed(2)} KB
+                                                        </Box>
+                                                    </VStack>
+                                                    <Button size="sm" colorScheme="red" variant="outline" onClick={handleRemoveFile}>
+                                                        Remove
+                                                    </Button>
+                                                </HStack>
+                                                {currentAttachment.mimetype?.startsWith('image/') && (
+                                                    <Box borderRadius="md" overflow="hidden" border="1px" borderColor="gray.200">
+                                                        <Image
+                                                            src={`${import.meta.env.VITE_API_URL.replace(/\/api$/, '')}/${currentAttachment.path.replace(/\\/g, '/')}`}
+                                                            alt="Current attachment"
+                                                            maxH="200px"
+                                                            objectFit="contain"
+                                                            mx="auto"
+                                                        />
                                                     </Box>
-                                                </VStack>
-                                                <Button size="sm" colorScheme="red" variant="outline" onClick={handleRemoveFile}>
-                                                    Remove
-                                                </Button>
-                                            </HStack>
+                                                )}
+                                            </VStack>
                                         </Box>
                                     )}
+
+                                    {previewUrl && (
+                                        <Box mb={4} p={3} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.100">
+                                            <Heading size="xs" mb={2} color="blue.700">New File Preview:</Heading>
+                                            <Box borderRadius="md" overflow="hidden" border="1px" borderColor="blue.200" bg="white">
+                                                <Image
+                                                    src={previewUrl}
+                                                    alt="New attachment preview"
+                                                    maxH="200px"
+                                                    objectFit="contain"
+                                                    mx="auto"
+                                                />
+                                            </Box>
+                                        </Box>
+                                    )}
+
                                     <Input
                                         name="attachment"
                                         label={currentAttachment ? "Change File (Optional)" : "Upload File (Optional)"}
@@ -209,9 +251,17 @@ const EditTask = () => {
                                         sx={{ padding: 1 }}
                                         value={undefined}
                                         onChange={(event) => {
-                                            setFieldValue("attachment", event.currentTarget.files[0]);
-                                            if (event.currentTarget.files[0]) {
+                                            const file = event.currentTarget.files[0];
+                                            setFieldValue("attachment", file);
+
+                                            // Handle preview
+                                            if (previewUrl) URL.revokeObjectURL(previewUrl);
+                                            if (file && file.type.startsWith('image/')) {
+                                                setPreviewUrl(URL.createObjectURL(file));
                                                 setIsFileRemoved(false);
+                                            } else {
+                                                setPreviewUrl(null);
+                                                if (file) setIsFileRemoved(false);
                                             }
                                         }}
                                     />
