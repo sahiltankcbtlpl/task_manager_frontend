@@ -24,5 +24,3 @@ dist-ssr
 *.sw?
 
 .env
-build_log.txt
-build_debug.txt
