@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getTasks, deleteTask, updateTask } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
-import { FiPlus, FiCheckSquare } from 'react-icons/fi';
+import { FiPlus, FiCheckSquare, FiAlertCircle } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config'; // Need to add TASK routes
 import CanAccess from '../../components/common/CanAccess';
@@ -14,17 +14,19 @@ import TableFilter from '../../components/common/TableFilter';
 import TableSelect from '../../components/common/TableSelect';
 import { hasPermission } from '../../utils/permissions';
 import useAuth from '../../hooks/useAuth';
+import { useProject } from '../../context/ProjectContext';
 import { getTaskStatuses } from '../../api/taskStatus.api';
 import { getStaffList } from '../../api/user.api';
 import { ROLES } from '../../constants/roles';
 import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
 import useDebounce from '../../hooks/useDebounce';
 
-const TaskList = () => {
+const TaskList = ({ category = 'TASK' }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
     const { user: currentUser } = useAuth();
+    const { activeProjectId } = useProject();
 
     const [statusOptions, setStatusOptions] = useState([]);
     const [assigneeOptions, setAssigneeOptions] = useState([]);
@@ -70,7 +72,8 @@ const TaskList = () => {
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            const params = {};
+            const params = { category };
+            if (activeProjectId) params.project = activeProjectId;
             if (statusFilter) params.status = statusFilter;
             if (assigneeFilter) params.assignee = assigneeFilter;
             if (debouncedSearchTerm) params.search = debouncedSearchTerm;
@@ -93,11 +96,12 @@ const TaskList = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Reset page on search or project change
     useEffect(() => {
         setCurrentPage(1);
         fetchTasks();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [statusFilter, assigneeFilter, debouncedSearchTerm]);
+    }, [statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
@@ -199,7 +203,7 @@ const TaskList = () => {
                 header: 'Actions',
                 render: (task) => (
                     <TableActions
-                        onEdit={`${ROUTES.TASKS}/edit/${task._id}`}
+                        onEdit={`${editRouteBase}/edit/${task._id}`}
                         onDelete={() => handleDelete(task._id)}
                         editPermission="tasks-update"
                         deletePermission="tasks-delete"
@@ -213,13 +217,21 @@ const TaskList = () => {
     }, [statusOptions, assigneeOptions, canUpdate, isStaff, currentUser]);
 
 
+    // Dynamic text based on category
+    const isIssue = category === 'ISSUE';
+    const createRoute = isIssue ? ROUTES.CREATE_ISSUE : ROUTES.CREATE_TASK;
+    const editRouteBase = isIssue ? ROUTES.ISSUES : ROUTES.TASKS;
+    const titleText = isIssue ? 'Issues' : 'Tasks';
+    const createText = isIssue ? 'Create Issue' : 'Create Task';
+    const itemName = isIssue ? 'issue' : 'task';
+
     return (
         <Box>
             <Flex justify="space-between" align="center" mb={6}>
-                <Heading size="lg">Tasks</Heading>
+                <Heading size="lg">{titleText}</Heading>
                 <CanAccess permission="tasks-create">
-                    <Link to={ROUTES.CREATE_TASK}>
-                        <Button leftIcon={<FiPlus />} colorScheme="brand">Create Task</Button>
+                    <Link to={createRoute}>
+                        <Button leftIcon={<FiPlus />} colorScheme="brand">{createText}</Button>
                     </Link>
                 </CanAccess>
             </Flex>
@@ -227,7 +239,7 @@ const TaskList = () => {
             <Flex mb={4} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
-                        placeholder="Search tasks..."
+                        placeholder={`Search ${itemName}s...`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -255,7 +267,7 @@ const TaskList = () => {
                     isLoading={true}
                 />
             ) : tasks.length === 0 ? (
-                <EmptyState title="No Tasks" description="Create a task to get started" icon={FiCheckSquare} />
+                <EmptyState title={`No ${titleText}`} description={`Create a ${itemName} to get started`} icon={isIssue ? FiAlertCircle : FiCheckSquare} />
             ) : (
                 <DataTable
                     columns={columns}

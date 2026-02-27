@@ -16,6 +16,7 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
 import CanAccess from '../../components/common/CanAccess';
+import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 
 import { createTask } from '../../api/task.api';
 import { getStaffList } from '../../api/user.api';
@@ -23,6 +24,7 @@ import { getTaskStatuses } from '../../api/taskStatus.api';
 
 import { ROUTES } from '../../config/routes.config';
 import { ROLES } from '../../constants/roles';
+import { useProject } from '../../context/ProjectContext';
 
 const CreateTaskSchema = Yup.object({
     name: Yup.string().required('Required'),
@@ -31,9 +33,10 @@ const CreateTaskSchema = Yup.object({
     taskStatus: Yup.string().required('Required'),
 });
 
-const CreateTask = () => {
+const CreateTask = ({ category = 'TASK' }) => {
     const toast = useToast();
     const navigate = useNavigate();
+    const { activeProjectId } = useProject();
 
     const [users, setUsers] = useState([]);
     const [statuses, setStatuses] = useState([]);
@@ -96,8 +99,21 @@ const CreateTask = () => {
 
     /* ---------------- Submit handler ---------------- */
     const handleSubmit = async (values, actions) => {
+        if (!activeProjectId) {
+            toast({
+                title: 'No Project Selected',
+                description: 'Please select a project from the header before creating.',
+                status: 'warning',
+            });
+            actions.setSubmitting(false);
+            return;
+        }
+
         try {
             const formData = new FormData();
+            formData.append('project', activeProjectId);
+            formData.append('category', category);
+
             Object.entries(values).forEach(([key, value]) => {
                 if (key !== 'attachments' && key !== 'videoAttachments' && value) {
                     formData.append(key, value);
@@ -119,17 +135,17 @@ const CreateTask = () => {
             await createTask(formData);
 
             toast({
-                title: 'Task Created',
+                title: `${isIssue ? 'Issue' : 'Task'} Created`,
                 status: 'success',
                 duration: 3000,
             });
 
-            navigate(ROUTES.TASKS);
+            navigate(isIssue ? ROUTES.ISSUES : ROUTES.TASKS);
         } catch (error) {
             toast({
                 title: 'Error',
                 description:
-                    error.response?.data?.message || 'Failed to create task',
+                    error.response?.data?.message || `Failed to create ${isIssue ? 'issue' : 'task'}`,
                 status: 'error',
             });
         } finally {
@@ -137,10 +153,12 @@ const CreateTask = () => {
         }
     };
 
+    const isIssue = category === 'ISSUE';
+
     return (
         <Box maxW="container.md" mx="auto" mt={8}>
             <Heading mb={6} size="lg">
-                Create New Task
+                Create New {isIssue ? 'Issue' : 'Task'}
             </Heading>
 
             <Box p={8} bg="white" borderRadius="md" shadow="sm">
@@ -155,14 +173,15 @@ const CreateTask = () => {
                             <VStack spacing={4} align="stretch">
                                 <Input
                                     name="name"
-                                    label="Task Title"
-                                    placeholder="e.g. Update Website"
+                                    label={`${isIssue ? 'Issue' : 'Task'} Title`}
+                                    placeholder={isIssue ? "e.g. Broken Login Button" : "e.g. Update Website"}
                                 />
 
-                                <Input
+                                <FormikMentionTextarea
                                     name="description"
                                     label="Description"
-                                    placeholder="Task details..."
+                                    placeholder={`Describe the ${isIssue ? 'issue' : 'task'} (Type @ to mention team members)...`}
+                                    users={users}
                                 />
 
                                 <Select
@@ -290,12 +309,12 @@ const CreateTask = () => {
                                         type="submit"
                                         isLoading={isSubmitting}
                                     >
-                                        Create Task
+                                        Create {isIssue ? 'Issue' : 'Task'}
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         onClick={() =>
-                                            navigate(ROUTES.TASKS)
+                                            navigate(isIssue ? ROUTES.ISSUES : ROUTES.TASKS)
                                         }
                                     >
                                         Cancel

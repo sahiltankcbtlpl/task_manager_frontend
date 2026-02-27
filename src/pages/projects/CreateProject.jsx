@@ -5,6 +5,7 @@ import * as Yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 
 import Input from '../../components/common/Input';
+import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 import Button from '../../components/common/Button';
 import UserMultiSelect from '../../components/projects/UserMultiSelect';
 import { createProject } from '../../api/project.api';
@@ -68,7 +69,7 @@ const CreateProject = () => {
                         <Form>
                             <VStack spacing={4} align="stretch">
                                 <Input name="title" label="Project Title" placeholder="e.g. Website Redesign" />
-                                <Input name="description" label="Description" placeholder="Project details..." />
+                                <FormikMentionTextarea name="description" label="Description" placeholder="Project details... Type @ to tag staff" />
                                 <UserMultiSelect name="members" label="Assign Team Members" users={users} />
                                 <HStack spacing={4} mt={4}>
                                     <Button type="submit" isLoading={isSubmitting}>Create Project</Button>

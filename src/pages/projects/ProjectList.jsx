@@ -25,7 +25,7 @@ const ProjectList = () => {
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(5);
 
     const fetchProjects = async () => {
         try {

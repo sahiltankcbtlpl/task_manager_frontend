@@ -41,10 +41,15 @@ function App() {
           <Route path="/staff/create" element={<CreateStaff />} />
           <Route path="/staff/:id/edit" element={<EditStaff />} />
 
-          {/* Task Routes */}
-          <Route path="/tasks" element={<TaskList />} />
-          <Route path="/tasks/create" element={<CreateTask />} />
-          <Route path="/tasks/edit/:id" element={<EditTask />} />
+          {/* Task Routes - category TASK */}
+          <Route path="/tasks" element={<TaskList category="TASK" />} />
+          <Route path="/tasks/create" element={<CreateTask category="TASK" />} />
+          <Route path="/tasks/edit/:id" element={<EditTask category="TASK" />} />
+
+          {/* Issue Routes - category ISSUE */}
+          <Route path="/issues" element={<TaskList category="ISSUE" />} />
+          <Route path="/issues/create" element={<CreateTask category="ISSUE" />} />
+          <Route path="/issues/edit/:id" element={<EditTask category="ISSUE" />} />
 
           {/* Role Routes */}
           <Route path="/roles" element={<RoleList />} />

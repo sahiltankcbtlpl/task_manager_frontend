@@ -1,5 +1,5 @@
 
-import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder, FiAlertCircle } from 'react-icons/fi';
 import { ROUTES } from './routes.config';
 
 export const SIDEBAR_ITEMS = [
@@ -26,6 +26,12 @@ export const SIDEBAR_ITEMS = [
         icon: FiCheckSquare,
         to: ROUTES.TASKS,
         permission: 'tasks-read',
+    },
+    {
+        label: 'Issues',
+        icon: FiAlertCircle,
+        to: ROUTES.ISSUES,
+        permission: 'tasks-read', // Shares permission with tasks per plan
     },
     {
         label: 'Users',

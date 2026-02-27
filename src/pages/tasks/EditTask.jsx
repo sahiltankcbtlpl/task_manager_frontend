@@ -11,8 +11,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config';
 import { ROLES } from '../../constants/roles';
-import useAuth from '../../hooks/useAuth';
 import CanAccess from '../../components/common/CanAccess';
+import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
+import { useProject } from '../../context/ProjectContext';
 
 const EditTaskSchema = Yup.object().shape({
     name: Yup.string().required('Required'),
@@ -21,9 +22,10 @@ const EditTaskSchema = Yup.object().shape({
     taskStatus: Yup.string(),
 });
 
-const EditTask = () => {
+const EditTask = ({ category = 'TASK' }) => {
     const { id } = useParams();
     const { user } = useAuth();
+    const { activeProjectId } = useProject();
     const toast = useToast();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
@@ -122,8 +124,21 @@ const EditTask = () => {
     };
 
     const handleSubmit = async (values, actions) => {
+        if (!activeProjectId) {
+            toast({
+                title: 'No Project Selected',
+                description: 'Please select a project from the header before editing.',
+                status: 'warning',
+            });
+            actions.setSubmitting(false);
+            return;
+        }
+
         try {
             const formData = new FormData();
+            formData.append('project', activeProjectId);
+            formData.append('category', category);
+
             formData.append('name', values.name);
             formData.append('description', values.description);
             formData.append('taskStatus', values.taskStatus);
@@ -154,15 +169,15 @@ const EditTask = () => {
 
             await updateTask(id, formData);
             toast({
-                title: 'Task Updated',
+                title: `${isIssue ? 'Issue' : 'Task'} Updated`,
                 status: 'success',
                 duration: 3000,
             });
-            navigate(ROUTES.TASKS);
+            navigate(isIssue ? ROUTES.ISSUES : ROUTES.TASKS);
         } catch (error) {
             toast({
                 title: 'Error',
-                description: error.response?.data?.message || 'Failed to update task',
+                description: error.response?.data?.message || `Failed to update ${isIssue ? 'issue' : 'task'}`,
                 status: 'error',
                 duration: 3000,
             });
@@ -179,9 +194,11 @@ const EditTask = () => {
         );
     }
 
+    const isIssue = category === 'ISSUE';
+
     return (
         <Box maxW="container.md" mx="auto" mt={8}>
-            <Heading mb={6} size="lg">Edit Task</Heading>
+            <Heading mb={6} size="lg">Edit {isIssue ? 'Issue' : 'Task'}</Heading>
 
             <Box p={8} bg="white" borderRadius="md" shadow="sm">
                 <Formik
@@ -195,15 +212,16 @@ const EditTask = () => {
                             <VStack spacing={4} align="stretch">
                                 <Input
                                     name="name"
-                                    label="Task Title"
-                                    placeholder="e.g. Update Website"
+                                    label={`${isIssue ? 'Issue' : 'Task'} Title`}
+                                    placeholder={isIssue ? "e.g. Broken Login Button" : "e.g. Update Website"}
                                     isDisabled={user?.role?.name === ROLES.STAFF || user?.role === ROLES.STAFF}
                                 />
-                                <Input
+                                <FormikMentionTextarea
                                     name="description"
                                     label="Description"
-                                    placeholder="Task details..."
+                                    placeholder={`Describe the ${isIssue ? 'issue' : 'task'} (Type @ to mention team members)...`}
                                     isDisabled={user?.role?.name === ROLES.STAFF || user?.role === ROLES.STAFF}
+                                    users={users}
                                 />
 
                                 <CanAccess permission="users-read">
@@ -404,11 +422,11 @@ const EditTask = () => {
 
                                 <HStack spacing={4} mt={4}>
                                     <Button type="submit" isLoading={isSubmitting}>
-                                        Update Task
+                                        Update {isIssue ? 'Issue' : 'Task'}
                                     </Button>
                                     <Button
                                         variant="ghost"
-                                        onClick={() => navigate(ROUTES.TASKS)}
+                                        onClick={() => navigate(isIssue ? ROUTES.ISSUES : ROUTES.TASKS)}
                                     >
                                         Cancel
                                     </Button>
