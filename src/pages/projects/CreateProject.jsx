@@ -69,7 +69,7 @@ const CreateProject = () => {
                         <Form>
                             <VStack spacing={4} align="stretch">
                                 <Input name="title" label="Project Title" placeholder="e.g. Website Redesign" />
-                                <FormikMentionTextarea name="description" label="Description" placeholder="Project details... Type @ to tag staff" />
+                                <FormikMentionTextarea name="description" label="Description" placeholder="Project details... Type @ to tag staff" users={users} />
                                 <UserMultiSelect name="members" label="Assign Team Members" users={users} />
                                 <HStack spacing={4} mt={4}>
                                     <Button type="submit" isLoading={isSubmitting}>Create Project</Button>

@@ -41,3 +41,11 @@ export const deleteTask = async (id) => {
     const response = await api.delete(`/tasks/${id}`);
     return response.data;
 };
+
+export const bulkUploadTasks = async (formData) => {
+    const config = {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    };
+    const response = await api.post('/tasks/bulk-upload', formData, config);
+    return response.data;
+};

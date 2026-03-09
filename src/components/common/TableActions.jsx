@@ -14,7 +14,9 @@ const TableActions = ({
 }) => {
     const navigate = useNavigate();
 
-    const handleEdit = () => {
+    const handleEdit = (e) => {
+        if (e && e.currentTarget) e.currentTarget.blur();
+
         if (typeof onEdit === 'string') {
             navigate(onEdit);
         } else if (typeof onEdit === 'function') {
@@ -22,7 +24,9 @@ const TableActions = ({
         }
     };
 
-    const handleDelete = () => {
+    const handleDelete = (e) => {
+        if (e && e.currentTarget) e.currentTarget.blur();
+
         if (onDelete) {
             onDelete(item);
         }

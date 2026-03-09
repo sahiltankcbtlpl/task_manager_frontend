@@ -17,7 +17,14 @@ const Login = () => {
     const location = useLocation();
     const toast = useToast();
 
-    const from = ROUTES.DASHBOARD;
+    // Parse target dynamically
+    const queryParams = new URLSearchParams(location.search);
+    const redirectParam = queryParams.get('redirect');
+    const fromPath = redirectParam ? `/${redirectParam}` : ROUTES.DASHBOARD;
+
+    // location.state.from is set by ProtectedRoute if the user came from a deep link while unauthenticated
+    const stateFromPath = location.state?.from ? (location.state.from.pathname + location.state.from.search) : null;
+    const from = stateFromPath || fromPath || ROUTES.DASHBOARD;
 
     const handleSubmit = async (values, actions) => {
         try {

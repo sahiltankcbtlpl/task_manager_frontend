@@ -22,5 +22,6 @@ export const ROUTES = {
     CREATE_PROJECT: '/projects/create',
     EDIT_PROJECT: '/projects/edit/:id',
     TEAM: '/team',
+    DOCUMENTS: '/documents',
     NOT_FOUND: '*',
 };

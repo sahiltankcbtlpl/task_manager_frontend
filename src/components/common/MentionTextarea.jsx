@@ -14,14 +14,12 @@ import {
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import { useField } from 'formik';
-import { getStaffList } from '../../api/user.api';
 import useAuth from '../../hooks/useAuth';
 
 // --- Base MentionTextarea Component ---
-export const MentionTextarea = ({ label, value, onChange, placeholder, ...props }) => {
+export const MentionTextarea = ({ label, value, onChange, placeholder, users = [], ...props }) => {
     const textareaRef = useRef(null);
     const [showUsers, setShowUsers] = useState(false);
-    const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [mentionQuery, setMentionQuery] = useState('');
     const [cursorPosition, setCursorPosition] = useState(0);
@@ -31,27 +29,6 @@ export const MentionTextarea = ({ label, value, onChange, placeholder, ...props 
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const { user: currentUser } = useAuth();
-
-    const fetchUsers = useCallback(async () => {
-        try {
-            const response = await getStaffList({});
-            const staff = response.data || response; // Adjust based on actual API response structure
-
-            let fetchedUsers = Array.isArray(staff) ? staff : [];
-            // Filter out current user
-            if (currentUser && currentUser._id) {
-                fetchedUsers = fetchedUsers.filter(u => u._id !== currentUser._id);
-            }
-            setUsers(fetchedUsers);
-        } catch (error) {
-            console.error('Failed to fetch users for mentions:', error);
-            setUsers([]);
-        }
-    }, [currentUser]);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
 
     // calculate coords for the popover using a hidden div technique
     const updateMenuPosition = () => {
@@ -100,12 +77,18 @@ export const MentionTextarea = ({ label, value, onChange, placeholder, ...props 
             setMentionStartIndex(match.index);
             setMentionQuery(query);
 
-            const filtered = users.filter(user => {
-                const isMatchQuery = user.name.toLowerCase().includes(query) ||
-                    (user.email && user.email.toLowerCase().includes(query));
+            const displayableUsers = currentUser
+                ? users.filter(u => u.value !== currentUser._id && u._id !== currentUser._id)
+                : users;
+
+            const filtered = displayableUsers.filter(user => {
+                const userName = user.label || user.name || '';
+                const userEmail = user.email || '';
+                const isMatchQuery = userName.toLowerCase().includes(query) ||
+                    userEmail.toLowerCase().includes(query);
                 // Optimization: don't show user if they are already mentioned elsewhere in the text
                 const escapeRegex = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(`@${escapeRegex(user.name)}\\b`, 'i');
+                const regex = new RegExp(`@${escapeRegex(userName)}\\b`, 'i');
                 const isAlreadyMentioned = regex.test(newValue);
 
                 return isMatchQuery && !isAlreadyMentioned;
@@ -125,7 +108,8 @@ export const MentionTextarea = ({ label, value, onChange, placeholder, ...props 
         const textBeforeMention = value.slice(0, mentionStartIndex);
         const textAfterMention = value.slice(textareaRef.current.selectionStart);
 
-        const mentionText = `@${user.name} `;
+        const userName = user.label || user.name || '';
+        const mentionText = `@${userName} `;
         const newValue = `${textBeforeMention}${mentionText}${textAfterMention}`;
 
         // Mock an event to pass to standard onChange handlers
@@ -215,7 +199,7 @@ export const MentionTextarea = ({ label, value, onChange, placeholder, ...props 
                         <List spacing={0}>
                             {filteredUsers.map((user, index) => (
                                 <ListItem
-                                    key={user._id || index}
+                                    key={user.value || user._id || index}
                                     px={4}
                                     py={3}
                                     cursor="pointer"
@@ -224,12 +208,16 @@ export const MentionTextarea = ({ label, value, onChange, placeholder, ...props 
                                     borderBottom="1px solid"
                                     borderColor="gray.100"
                                     _last={{ borderBottom: 'none' }}
-                                    onClick={() => insertMention(user)}
+                                    onMouseDown={(e) => {
+                                        // Prevent the textarea from losing focus, which triggers the outside click handler too early
+                                        e.preventDefault();
+                                        insertMention(user);
+                                    }}
                                 >
                                     <HStack>
-                                        <Avatar size="sm" name={user.name} src={user.avatar} bg="brand.500" color="white" />
+                                        <Avatar size="sm" name={user.label || user.name} src={user.avatar} bg="brand.500" color="white" />
                                         <Box ml={2}>
-                                            <Text fontSize="sm" fontWeight="bold" color="gray.800">{user.name}</Text>
+                                            <Text fontSize="sm" fontWeight="bold" color="gray.800">{user.label || user.name}</Text>
                                             <Text fontSize="xs" color="gray.400" textTransform="uppercase">
                                                 {user.role?.name || user.role || 'STAFF'}
                                             </Text>
@@ -251,11 +239,12 @@ MentionTextarea.propTypes = {
     id: PropTypes.string,
     value: PropTypes.string,
     onChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string
+    placeholder: PropTypes.string,
+    users: PropTypes.array
 };
 
 // --- Formik Wrapper Component ---
-export const FormikMentionTextarea = ({ label, ...props }) => {
+export const FormikMentionTextarea = ({ label, users = [], ...props }) => {
     const [field, meta, helpers] = useField(props);
 
     const handleChange = (e) => {
@@ -268,6 +257,7 @@ export const FormikMentionTextarea = ({ label, ...props }) => {
                 {...field}
                 {...props}
                 label={label}
+                users={users}
                 value={field.value}
                 onChange={handleChange}
             />

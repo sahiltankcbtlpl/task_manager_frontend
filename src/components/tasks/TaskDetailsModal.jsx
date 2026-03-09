@@ -61,7 +61,7 @@ const TaskDetailsModal = ({ isOpen, onClose, task }) => {
                                     {isImage ? (
                                         <Image
                                             src={attachmentUrl}
-                                            alt="Task Attachment"
+                                            alt="Attachment"
                                             maxH="300px"
                                             objectFit="contain"
                                             mx="auto"

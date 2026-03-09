@@ -1,10 +1,11 @@
 import { Box, VStack, Text, Icon } from "@chakra-ui/react";
 import { NavLink } from "react-router-dom";
 import { ROUTES } from "../../config/routes.config";
-
+import theme from "../../theme/chakra.theme";
 import CanAccess from "../common/CanAccess";
 import { SIDEBAR_ITEMS } from "../../config/sidebar.config";
 import PropTypes from "prop-types";
+import { color } from "framer-motion";
 
 const Sidebar = ({ isOpen, onClose, ...props }) => {
     return (

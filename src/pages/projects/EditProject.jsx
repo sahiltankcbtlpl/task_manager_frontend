@@ -32,10 +32,8 @@ const EditProject = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [projectRes, usersRes] = await Promise.all([
-                    getProjectById(id),
-                    getStaffList()
-                ]);
+                const projectRes = await getProjectById(id);
+                const usersRes = await getStaffList();
 
                 const staffOptions = usersRes
                     .filter(u => (u.role?.name || u.role) !== 'Super Admin');
@@ -89,7 +87,7 @@ const EditProject = () => {
                             <Form>
                                 <VStack spacing={4} align="stretch">
                                     <Input name="title" label="Project Title" placeholder="e.g. Website Redesign" />
-                                    <FormikMentionTextarea name="description" label="Description" placeholder="Project details... Type @ to tag staff" />
+                                    <FormikMentionTextarea name="description" label="Description" placeholder="Project details... Type @ to tag staff" users={users} />
                                     <UserMultiSelect name="members" label="Assign Team Members" users={users} />
                                     <HStack spacing={4} mt={4}>
                                         <Button type="submit" isLoading={isSubmitting}>Update Project</Button>

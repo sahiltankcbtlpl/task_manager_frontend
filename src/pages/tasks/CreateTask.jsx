@@ -19,7 +19,7 @@ import CanAccess from '../../components/common/CanAccess';
 import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 
 import { createTask } from '../../api/task.api';
-import { getStaffList } from '../../api/user.api';
+import { getProjectMembers } from '../../api/project.api';
 import { getTaskStatuses } from '../../api/taskStatus.api';
 
 import { ROUTES } from '../../config/routes.config';
@@ -37,6 +37,7 @@ const CreateTask = ({ category = 'TASK' }) => {
     const toast = useToast();
     const navigate = useNavigate();
     const { activeProjectId } = useProject();
+    const isIssue = category === 'ISSUE';
 
     const [users, setUsers] = useState([]);
     const [statuses, setStatuses] = useState([]);
@@ -63,10 +64,14 @@ const CreateTask = ({ category = 'TASK' }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [usersRes, statusRes] = await Promise.all([
-                    getStaffList(),
-                    getTaskStatuses(),
-                ]);
+                const promises = [getTaskStatuses()];
+                if (activeProjectId) {
+                    promises.push(getProjectMembers(activeProjectId));
+                }
+
+                const results = await Promise.all(promises);
+                const statusRes = results[0];
+                const usersRes = activeProjectId ? results[1] : [];
 
                 const staffOptions = usersRes
                     .filter(u => (u.role?.name || u.role) !== ROLES.ADMIN)
@@ -95,7 +100,7 @@ const CreateTask = ({ category = 'TASK' }) => {
         };
 
         fetchData();
-    }, [toast]);
+    }, [toast, activeProjectId]);
 
     /* ---------------- Submit handler ---------------- */
     const handleSubmit = async (values, actions) => {
@@ -152,8 +157,6 @@ const CreateTask = ({ category = 'TASK' }) => {
             actions.setSubmitting(false);
         }
     };
-
-    const isIssue = category === 'ISSUE';
 
     return (
         <Box maxW="container.md" mx="auto" mt={8}>

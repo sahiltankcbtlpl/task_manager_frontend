@@ -5,15 +5,16 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Select from '../../components/common/Select';
 import { updateTask, getTaskById } from '../../api/task.api';
-import { getStaffList } from '../../api/user.api';
+import { getProjectMembers } from '../../api/project.api';
 import { getTaskStatuses } from '../../api/taskStatus.api';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config';
 import { ROLES } from '../../constants/roles';
 import CanAccess from '../../components/common/CanAccess';
 import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 import { useProject } from '../../context/ProjectContext';
+import { useAuth } from '../../context/AuthContext';
 
 const EditTaskSchema = Yup.object().shape({
     name: Yup.string().required('Required'),
@@ -25,13 +26,24 @@ const EditTaskSchema = Yup.object().shape({
 const EditTask = ({ category = 'TASK' }) => {
     const { id } = useParams();
     const { user } = useAuth();
-    const { activeProjectId } = useProject();
+    const { activeProjectId, setActiveProjectId } = useProject();
     const toast = useToast();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [statuses, setStatuses] = useState([]);
     const [initialValues, setInitialValues] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [itemCategory, setItemCategory] = useState(category);
+    const isIssue = itemCategory === 'ISSUE';
+    const didAutoSelectRef = useRef(false);
+
+    useEffect(() => {
+        return () => {
+            if (didAutoSelectRef.current && setActiveProjectId) {
+                setActiveProjectId('');
+            }
+        };
+    }, [setActiveProjectId]);
 
     const [legacyAttachment, setLegacyAttachment] = useState(null);
     const [isLegacyRemoved, setIsLegacyRemoved] = useState(false);
@@ -60,12 +72,22 @@ const EditTask = ({ category = 'TASK' }) => {
                     getTaskStatuses()
                 ]);
 
-                // Try fetching staff list (optional for some roles)
+                // Try fetching staff list from project members (optional for some roles)
                 let staffData = [];
                 try {
-                    staffData = await getStaffList();
+                    const currentProjectId = activeProjectId || taskData.project?._id || taskData.project;
+
+                    // Auto-select project if not currently selected
+                    if (!activeProjectId && currentProjectId && setActiveProjectId) {
+                        setActiveProjectId(currentProjectId);
+                        didAutoSelectRef.current = true;
+                    }
+
+                    if (currentProjectId) {
+                        staffData = await getProjectMembers(currentProjectId);
+                    }
                 } catch (error) {
-                    console.warn('Could not fetch staff list (permission denied?)');
+                    console.warn('Could not fetch project members (permission denied?)');
                 }
 
                 const filteredUsers = staffData.filter(u => {
@@ -78,6 +100,10 @@ const EditTask = ({ category = 'TASK' }) => {
                     .filter(s => s.status === 'active')
                     .map(s => ({ label: s.name, value: s._id }))
                 );
+
+                if (taskData.category) {
+                    setItemCategory(taskData.category);
+                }
 
                 setInitialValues({
                     name: taskData.name || '',
@@ -96,7 +122,7 @@ const EditTask = ({ category = 'TASK' }) => {
                 console.error('Failed to fetch data', err);
                 toast({
                     title: 'Error',
-                    description: 'Failed to load task details',
+                    description: `Failed to load ${isIssue ? 'issue' : 'task'} details`,
                     status: 'error',
                     duration: 3000,
                 });
@@ -106,7 +132,7 @@ const EditTask = ({ category = 'TASK' }) => {
             }
         };
         fetchData();
-    }, [id, navigate, toast]);
+    }, [id, navigate, toast, activeProjectId]);
 
     const handleRemoveLegacy = () => {
         setLegacyAttachment(null);
@@ -137,7 +163,7 @@ const EditTask = ({ category = 'TASK' }) => {
         try {
             const formData = new FormData();
             formData.append('project', activeProjectId);
-            formData.append('category', category);
+            formData.append('category', itemCategory);
 
             formData.append('name', values.name);
             formData.append('description', values.description);
@@ -193,9 +219,6 @@ const EditTask = ({ category = 'TASK' }) => {
             </Center>
         );
     }
-
-    const isIssue = category === 'ISSUE';
-
     return (
         <Box maxW="container.md" mx="auto" mt={8}>
             <Heading mb={6} size="lg">Edit {isIssue ? 'Issue' : 'Task'}</Heading>

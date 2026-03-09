@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getTasks, deleteTask, updateTask } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
-import { FiPlus, FiCheckSquare, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiCheckSquare, FiAlertCircle, FiUpload } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config'; // Need to add TASK routes
 import CanAccess from '../../components/common/CanAccess';
@@ -16,9 +16,11 @@ import { hasPermission } from '../../utils/permissions';
 import useAuth from '../../hooks/useAuth';
 import { useProject } from '../../context/ProjectContext';
 import { getTaskStatuses } from '../../api/taskStatus.api';
+import { getProjectMembers } from '../../api/project.api';
 import { getStaffList } from '../../api/user.api';
 import { ROLES } from '../../constants/roles';
 import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
+import BulkUploadModal from '../../components/tasks/BulkUploadModal';
 import useDebounce from '../../hooks/useDebounce';
 
 const TaskList = ({ category = 'TASK' }) => {
@@ -38,6 +40,7 @@ const TaskList = ({ category = 'TASK' }) => {
     // Modal State
     const [selectedTask, setSelectedTask] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
 
     const handleViewTask = (task) => {
         setSelectedTask(task);
@@ -49,15 +52,19 @@ const TaskList = ({ category = 'TASK' }) => {
             const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
             const promises = [getTaskStatuses()];
             if (!isStaff) {
-                promises.push(getStaffList());
+                if (activeProjectId) {
+                    promises.push(getProjectMembers(activeProjectId));
+                } else {
+                    promises.push(getStaffList());
+                }
             }
 
             const results = await Promise.all(promises);
             const statusesData = results[0];
-            const staffData = isStaff ? [] : results[1];
+            const staffData = (!isStaff) ? results[1] : [];
 
             setStatusOptions(statusesData.map(s => ({ label: s.name, value: s._id })));
-            if (!isStaff && staffData) {
+            if (!isStaff) {
                 const filteredStaff = staffData.filter(u => {
                     const roleName = u.role?.name || u.role;
                     return roleName !== ROLES.ADMIN;
@@ -94,7 +101,7 @@ const TaskList = ({ category = 'TASK' }) => {
     useEffect(() => {
         fetchOptions();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [activeProjectId]);
 
     // Reset page on search or project change
     useEffect(() => {
@@ -120,10 +127,10 @@ const TaskList = ({ category = 'TASK' }) => {
     }, [debouncedSearchTerm]);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this task?')) return;
+        if (!window.confirm(`Are you sure you want to delete this ${itemName}?`)) return;
         try {
             await deleteTask(id);
-            toast({ title: 'Task deleted', status: 'success' });
+            toast({ title: `${isIssue ? 'Issue' : 'Task'} deleted`, status: 'success' });
             fetchTasks();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to delete', status: 'error' });
@@ -137,11 +144,11 @@ const TaskList = ({ category = 'TASK' }) => {
             // Update local state with the returned populated task
             setTasks(prev => prev.map(t => (t._id === id ? updatedTaskData : t)));
 
-            toast({ title: 'Task updated', status: 'success' });
+            toast({ title: `${isIssue ? 'Issue' : 'Task'} updated`, status: 'success' });
         } catch (error) {
             toast({
                 title: 'Update failed',
-                description: error.response?.data?.message || 'Could not update task',
+                description: error.response?.data?.message || `Could not update ${itemName}`,
                 status: 'error'
             });
         }
@@ -149,6 +156,14 @@ const TaskList = ({ category = 'TASK' }) => {
 
     const canUpdate = hasPermission(currentUser, 'tasks-update');
     const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
+
+    // Dynamic text based on category
+    const isIssue = category === 'ISSUE';
+    const createRoute = isIssue ? ROUTES.CREATE_ISSUE : ROUTES.CREATE_TASK;
+    const editRouteBase = isIssue ? ROUTES.ISSUES : ROUTES.TASKS;
+    const titleText = isIssue ? 'Issues' : 'Tasks';
+    const createText = isIssue ? 'Create Issue' : 'Create Task';
+    const itemName = isIssue ? 'issue' : 'task';
 
     const columns = useMemo(() => {
         const cols = [
@@ -186,15 +201,34 @@ const TaskList = ({ category = 'TASK' }) => {
             cols.push({
                 header: 'Assignee',
                 accessor: 'assignee',
-                render: (task) => (
-                    <TableSelect
-                        value={task.assignee?._id || ''}
-                        options={assigneeOptions}
-                        onChange={(val) => handleUpdateTask(task._id, 'assignee', val)}
-                        isDisabled={!canUpdate || assigneeOptions.length === 0}
-                        placeholder="Unassigned"
-                    />
-                )
+                render: (task) => {
+                    let currentOptions = assigneeOptions;
+
+                    // If viewing all projects, derive options from the task's populated project members
+                    if (!activeProjectId && task.project && Array.isArray(task.project.members)) {
+                        const filteredMembers = task.project.members.filter(u => {
+                            const roleName = u.role?.name || u.role;
+                            return roleName !== ROLES.ADMIN;
+                        });
+                        currentOptions = filteredMembers.map(u => ({ label: u.name, value: u._id }));
+                    }
+
+                    // Make sure the current assignee is always included in the options
+                    const optionsWithCurrent = [...currentOptions];
+                    if (task.assignee && !optionsWithCurrent.some(opt => opt.value === task.assignee._id)) {
+                        optionsWithCurrent.push({ label: task.assignee.name, value: task.assignee._id });
+                    }
+
+                    return (
+                        <TableSelect
+                            value={task.assignee?._id || ''}
+                            options={optionsWithCurrent}
+                            onChange={(val) => handleUpdateTask(task._id, 'assignee', val)}
+                            isDisabled={!canUpdate}
+                            placeholder="Unassigned"
+                        />
+                    );
+                }
             });
         }
 
@@ -214,26 +248,24 @@ const TaskList = ({ category = 'TASK' }) => {
         }
 
         return cols;
-    }, [statusOptions, assigneeOptions, canUpdate, isStaff, currentUser]);
-
-
-    // Dynamic text based on category
-    const isIssue = category === 'ISSUE';
-    const createRoute = isIssue ? ROUTES.CREATE_ISSUE : ROUTES.CREATE_TASK;
-    const editRouteBase = isIssue ? ROUTES.ISSUES : ROUTES.TASKS;
-    const titleText = isIssue ? 'Issues' : 'Tasks';
-    const createText = isIssue ? 'Create Issue' : 'Create Task';
-    const itemName = isIssue ? 'issue' : 'task';
+    }, [statusOptions, assigneeOptions, canUpdate, isStaff, currentUser, editRouteBase]);
 
     return (
         <Box>
             <Flex justify="space-between" align="center" mb={6}>
                 <Heading size="lg">{titleText}</Heading>
-                <CanAccess permission="tasks-create">
-                    <Link to={createRoute}>
-                        <Button leftIcon={<FiPlus />} colorScheme="brand">{createText}</Button>
-                    </Link>
-                </CanAccess>
+                <HStack spacing={4}>
+                    <CanAccess permission="tasks-create">
+                        <Button leftIcon={<FiUpload />} variant="outline" onClick={() => setIsBulkUploadModalOpen(true)}>
+                            Bulk Upload
+                        </Button>
+                    </CanAccess>
+                    <CanAccess permission="tasks-create">
+                        <Link to={createRoute}>
+                            <Button leftIcon={<FiPlus />} colorScheme="brand">{createText}</Button>
+                        </Link>
+                    </CanAccess>
+                </HStack>
             </Flex>
 
             <Flex mb={4} gap={4} wrap="wrap">
@@ -288,6 +320,15 @@ const TaskList = ({ category = 'TASK' }) => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 task={selectedTask}
+            />
+
+            <BulkUploadModal
+                isOpen={isBulkUploadModalOpen}
+                onClose={() => setIsBulkUploadModalOpen(false)}
+                category={category}
+                onSuccess={() => {
+                    fetchTasks();
+                }}
             />
         </Box>
     );

@@ -4,16 +4,21 @@ import { FiActivity } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
 import { getTasks } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
+import { useProject } from '../../context/ProjectContext';
 
 const Dashboard = () => {
     const [stats, setStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
+    const { activeProjectId } = useProject();
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const tasks = await getTasks();
+                const params = {};
+                if (activeProjectId) params.project = activeProjectId;
+
+                const tasks = await getTasks(params);
                 const total = tasks.length;
 
                 // Group by Task Status Name
@@ -45,13 +50,13 @@ const Dashboard = () => {
         };
 
         fetchStats();
-    }, [toast]);
+    }, [toast, activeProjectId]);
 
     if (loading) return <Loader />;
 
     return (
         <Box>
-            <Heading mb={6} size="lg">Dashboard</Heading>
+            <Heading mb={6} size="lg">Dashboard </Heading>
 
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
                 {stats.map((stat, index) => (

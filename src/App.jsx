@@ -24,6 +24,8 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 import MainLayout from './components/Layout/MainLayout';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
+import DocumentPage from './pages/documents/DocumentPage';
+
 function App() {
   return (
     <Routes>
@@ -50,6 +52,9 @@ function App() {
           <Route path="/issues" element={<TaskList category="ISSUE" />} />
           <Route path="/issues/create" element={<CreateTask category="ISSUE" />} />
           <Route path="/issues/edit/:id" element={<EditTask category="ISSUE" />} />
+
+          {/* Documents Routes */}
+          <Route path="/documents" element={<DocumentPage />} />
 
           {/* Role Routes */}
           <Route path="/roles" element={<RoleList />} />
