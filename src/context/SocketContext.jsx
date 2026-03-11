@@ -23,9 +23,15 @@ export const SocketProvider = ({ children }) => {
 
         if (socketRef.current) return; // Prevent duplicate connections
 
-        const baseUrl = import.meta.env.VITE_API_URL
-            ? new URL(import.meta.env.VITE_API_URL).origin
-            : 'http://localhost:5000';
+        let baseUrl = 'http://localhost:5000';
+        
+        // Dynamically determine the WebSocket base URL based on where the frontend is being accessed from
+        if (window.location.hostname.includes('devtunnels.ms')) {
+            // Replace the frontend port (e.g. 5173) with the backend port (5000) for the API URL
+            baseUrl = `${window.location.protocol}//${window.location.host.replace(/(?:-\d+)?\.inc1\.devtunnels\.ms/, '-5000.inc1.devtunnels.ms')}`;
+        } else if (import.meta.env.VITE_API_URL && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            baseUrl = new URL(import.meta.env.VITE_API_URL).origin;
+        }
 
         const newSocket = io(baseUrl, {
             withCredentials: true,

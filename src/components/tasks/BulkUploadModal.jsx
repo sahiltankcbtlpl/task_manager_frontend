@@ -23,6 +23,7 @@ import { useState, useEffect } from 'react';
 import { useProject } from '../../context/ProjectContext';
 import { bulkUploadTasks } from '../../api/task.api';
 import { getProjects } from '../../api/project.api';
+import api from '../../api/axios';
 
 const BulkUploadModal = ({ isOpen, onClose, category = 'TASK', onSuccess }) => {
     const { activeProjectId } = useProject();
@@ -128,16 +129,16 @@ const BulkUploadModal = ({ isOpen, onClose, category = 'TASK', onSuccess }) => {
                 <ModalCloseButton />
                 <ModalBody>
                     <VStack spacing={4} align="stretch">
-                        <Alert status="info" borderRadius="md">
+                        {/* <Alert status="info" borderRadius="md">
                             <AlertIcon />
                             <Box>
                                 <AlertTitle fontSize="sm">Excel Format Requirements</AlertTitle>
                                 <AlertDescription fontSize="sm">
                                     Columns: <b>Title</b>, <b>Description</b>, <b>Assignee Email</b>, <b>Status</b><br />
-                                    <i>Only .xlsx files are supported. Title and Assignee Email are required. Attachments are not supported.</i>
+                                    <i>Only .xlsx files are supported. Title is required. If Assignee Email is missing or invalid, the task will be created as "Unassigned". Attachments are not supported.</i>
                                 </AlertDescription>
                             </Box>
-                        </Alert>
+                        </Alert> */}
 
                         {!activeProjectId && (
                             <FormControl isRequired>
@@ -186,18 +187,30 @@ const BulkUploadModal = ({ isOpen, onClose, category = 'TASK', onSuccess }) => {
                         )}
                     </VStack>
                 </ModalBody>
-                <ModalFooter>
-                    <Button variant="ghost" mr={3} onClick={onClose} isDisabled={isUploading}>
-                        Close
-                    </Button>
-                    <Button
-                        colorScheme="brand"
-                        onClick={handleUpload}
-                        isLoading={isUploading}
-                        loadingText="Uploading..."
+                <ModalFooter display="flex" justifyContent="space-between">
+                    <Button 
+                        variant="outline" 
+                        colorScheme="blue" 
+                        size="sm"
+                        as="a" 
+                        href={`${api.defaults.baseURL.replace('/api', '')}/public/samples/bulk-upload-sample.xlsx`}
+                        download
                     >
-                        Upload
+                        Download Sample
                     </Button>
+                    <Box>
+                        <Button variant="ghost" mr={3} onClick={onClose} isDisabled={isUploading}>
+                            Close
+                        </Button>
+                        <Button
+                            colorScheme="brand"
+                            onClick={handleUpload}
+                            isLoading={isUploading}
+                            loadingText="Uploading..."
+                        >
+                            Upload
+                        </Button>
+                    </Box>
                 </ModalFooter>
             </ModalContent>
         </Modal>

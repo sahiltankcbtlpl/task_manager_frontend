@@ -76,17 +76,33 @@ const TaskList = ({ category = 'TASK' }) => {
         }
     };
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(5);
+    const [totalItems, setTotalItems] = useState(0);
+
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            const params = { category };
+            const params = {
+                category,
+                page: currentPage,
+                limit: pageSize
+            };
             if (activeProjectId) params.project = activeProjectId;
             if (statusFilter) params.status = statusFilter;
             if (assigneeFilter) params.assignee = assigneeFilter;
             if (debouncedSearchTerm) params.search = debouncedSearchTerm;
 
-            const tasksData = await getTasks(params);
-            setTasks(tasksData);
+            const response = await getTasks(params);
+
+            // Handle both paginated and non-paginated backends safely
+            if (response.data && response.pagination) {
+                setTasks(response.data);
+                setTotalItems(response.pagination.totalItems);
+            } else {
+                setTasks(response);
+                setTotalItems(response.length);
+            }
         } catch (error) {
             toast({
                 title: 'Error fetching tasks',
@@ -103,28 +119,20 @@ const TaskList = ({ category = 'TASK' }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeProjectId]);
 
-    // Reset page on search or project change
+    // Reset to page 1 ONLY when filters or search change
     useEffect(() => {
         setCurrentPage(1);
+    }, [statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category, pageSize]);
+
+    // Fetch data whenever ANY of the parameters change
+    useEffect(() => {
         fetchTasks();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
+    }, [currentPage, pageSize, statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(5);
-
-    // Pagination logic (now based on all tasks from backend)
-    const totalItems = tasks.length;
-    const totalPages = Math.ceil(totalItems / pageSize);
-    const paginatedTasks = tasks.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize
-    );
-
-    // Reset page on search
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [debouncedSearchTerm]);
+    // Pagination logic (now reflects actual server data)
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    const paginatedTasks = tasks;
 
     const handleDelete = async (id) => {
         if (!window.confirm(`Are you sure you want to delete this ${itemName}?`)) return;
