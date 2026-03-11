@@ -1,6 +1,6 @@
 import React from 'react';
 import { HStack, Button, Text, IconButton, Select } from '@chakra-ui/react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight } from 'react-icons/fi';
 import PropTypes from 'prop-types';
 
 const Pagination = ({
@@ -36,6 +36,13 @@ const Pagination = ({
             </HStack>
 
             <HStack>
+                <IconButton
+                    icon={<FiChevronsLeft />}
+                    isDisabled={currentPage === 1}
+                    onClick={() => onPageChange(1)}
+                    size="sm"
+                    aria-label="First Page"
+                />
                 <IconButton
                     icon={<FiChevronLeft />}
                     isDisabled={currentPage === 1}
@@ -77,6 +84,13 @@ const Pagination = ({
                     onClick={() => onPageChange(currentPage + 1)}
                     size="sm"
                     aria-label="Next Page"
+                />
+                <IconButton
+                    icon={<FiChevronsRight />}
+                    isDisabled={currentPage === totalPages}
+                    onClick={() => onPageChange(totalPages)}
+                    size="sm"
+                    aria-label="Last Page"
                 />
             </HStack>
         </HStack>
