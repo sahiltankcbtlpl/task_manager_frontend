@@ -33,7 +33,6 @@ const BulkUploadModal = ({ isOpen, onClose, category = 'TASK', onSuccess }) => {
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState('');
     const [uploadResult, setUploadResult] = useState(null);
-
     useEffect(() => {
         if (isOpen && !activeProjectId) {
             getProjects().then(data => {
@@ -101,7 +100,9 @@ const BulkUploadModal = ({ isOpen, onClose, category = 'TASK', onSuccess }) => {
                 duration: 5000,
             });
 
-            if (onSuccess) onSuccess();
+            // We no longer call onSuccess() here because the backend now emits
+            // a 'taskCreated' Socket.IO event which automatically triggers 
+            // all connected clients (including this one) to refetch their tasks.
 
             // Auto-close if there are no errors
             if (!result.errors || result.errors.length === 0) {

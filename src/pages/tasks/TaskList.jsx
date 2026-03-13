@@ -1,5 +1,5 @@
-import { Box, Heading, Flex, Badge, Button, IconButton, useToast, HStack } from '@chakra-ui/react';
-import { useEffect, useState, useMemo } from 'react';
+import { Box, Heading, Flex, Badge, Button, IconButton, useToast, HStack, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { getTasks, deleteTask, updateTask } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
@@ -22,6 +22,7 @@ import { ROLES } from '../../constants/roles';
 import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
 import BulkUploadModal from '../../components/tasks/BulkUploadModal';
 import useDebounce from '../../hooks/useDebounce';
+import useSocket from '../../hooks/useSocket';
 
 const TaskList = ({ category = 'TASK' }) => {
     const [tasks, setTasks] = useState([]);
@@ -29,6 +30,7 @@ const TaskList = ({ category = 'TASK' }) => {
     const toast = useToast();
     const { user: currentUser } = useAuth();
     const { activeProjectId } = useProject();
+    const socket = useSocket();
 
     const [statusOptions, setStatusOptions] = useState([]);
     const [assigneeOptions, setAssigneeOptions] = useState([]);
@@ -41,6 +43,11 @@ const TaskList = ({ category = 'TASK' }) => {
     const [selectedTask, setSelectedTask] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+    
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [taskToDelete, setTaskToDelete] = useState(null);
 
     const handleViewTask = (task) => {
         setSelectedTask(task);
@@ -130,18 +137,47 @@ const TaskList = ({ category = 'TASK' }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, pageSize, statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
 
+    // Real-time updates
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleTaskChange = () => {
+            fetchTasks();
+        };
+
+        socket.on('taskCreated', handleTaskChange);
+        socket.on('taskUpdated', handleTaskChange);
+        socket.on('taskDeleted', handleTaskChange);
+
+        return () => {
+            socket.off('taskCreated', handleTaskChange);
+            socket.off('taskUpdated', handleTaskChange);
+            socket.off('taskDeleted', handleTaskChange);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, currentPage, pageSize, statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
+
     // Pagination logic (now reflects actual server data)
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
     const paginatedTasks = tasks;
 
-    const handleDelete = async (id) => {
-        if (!window.confirm(`Are you sure you want to delete this ${itemName}?`)) return;
+    const confirmDelete = (id) => {
+        setTaskToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!taskToDelete) return;
+
         try {
-            await deleteTask(id);
+            await deleteTask(taskToDelete);
             toast({ title: `${isIssue ? 'Issue' : 'Task'} deleted`, status: 'success' });
             fetchTasks();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to delete', status: 'error' });
+        } finally {
+            onAlertClose();
+            setTaskToDelete(null);
         }
     };
 
@@ -246,7 +282,7 @@ const TaskList = ({ category = 'TASK' }) => {
                 render: (task) => (
                     <TableActions
                         onEdit={`${editRouteBase}/edit/${task._id}`}
-                        onDelete={() => handleDelete(task._id)}
+                        onDelete={() => confirmDelete(task._id)}
                         editPermission="tasks-update"
                         deletePermission="tasks-delete"
                         item={task}
@@ -334,10 +370,36 @@ const TaskList = ({ category = 'TASK' }) => {
                 isOpen={isBulkUploadModalOpen}
                 onClose={() => setIsBulkUploadModalOpen(false)}
                 category={category}
-                onSuccess={() => {
-                    fetchTasks();
-                }}
             />
+
+            {/* Delete Confirmation Alert */}
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete {isIssue ? 'Issue' : 'Task'}
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };
