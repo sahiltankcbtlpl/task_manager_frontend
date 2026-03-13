@@ -1,4 +1,4 @@
-import { Box, Heading, Flex, IconButton, Badge, Tag, HStack, useToast } from '@chakra-ui/react';
+import { Box, Heading, Flex, IconButton, Badge, Tag, HStack, useToast, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
 import { FiPlus } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
@@ -7,7 +7,7 @@ import TableActions from '../../components/common/TableActions';
 import CanAccess from '../../components/common/CanAccess';
 import SearchBar from '../../components/common/SearchBar';
 import { ROUTES } from '../../config/routes.config';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getPermissions, deletePermission } from '../../api/permission.api';
 import { hasPermission } from '../../utils/permissions';
 import useAuth from '../../hooks/useAuth';
@@ -23,6 +23,11 @@ const PermissionList = () => {
     const [loading, setLoading] = useState(true);
     const toast = useToast();
     const { user: currentUser } = useAuth();
+
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [permissionToDelete, setPermissionToDelete] = useState(null);
 
     const fetchPermissions = async () => {
         try {
@@ -57,14 +62,22 @@ const PermissionList = () => {
         currentPage * pageSize
     );
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this permission?')) return;
+    const confirmDelete = (id) => {
+        setPermissionToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!permissionToDelete) return;
         try {
-            await deletePermission(id);
+            await deletePermission(permissionToDelete);
             toast({ title: 'Permission deleted', status: 'success' });
             fetchPermissions();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to delete', status: 'error' });
+        } finally {
+            onAlertClose();
+            setPermissionToDelete(null);
         }
     };
 
@@ -98,7 +111,7 @@ const PermissionList = () => {
             render: (perm) => (
                 <TableActions
                     onEdit={ROUTES.EDIT_PERMISSION.replace(':id', perm._id)}
-                    onDelete={() => handleDelete(perm._id)}
+                    onDelete={() => confirmDelete(perm._id)}
                     editPermission="permissions-update"
                     deletePermission="permissions-delete"
                     item={perm}
@@ -140,6 +153,34 @@ const PermissionList = () => {
                     totalItems
                 }}
             />
+
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete Permission
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };

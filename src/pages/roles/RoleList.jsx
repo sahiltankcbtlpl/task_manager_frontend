@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     Heading,
@@ -8,7 +8,14 @@ import {
     Badge,
     useToast,
     Spinner,
-    Center
+    Center,
+    useDisclosure,
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogContent,
+    AlertDialogOverlay
 } from '@chakra-ui/react';
 import { FiPlus } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
@@ -33,6 +40,11 @@ const RoleList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
 
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [roleToDelete, setRoleToDelete] = useState(null);
+
     const fetchRoles = async () => {
         try {
             const params = {};
@@ -54,22 +66,29 @@ const RoleList = () => {
         fetchRoles();
     }, [debouncedSearchTerm]);
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this role?')) {
-            try {
-                await deleteRole(id);
-                toast({
-                    title: 'Role Deleted',
-                    status: 'success',
-                });
-                fetchRoles();
-            } catch (error) {
-                toast({
-                    title: 'Error',
-                    description: error.response?.data?.message || 'Failed to delete role',
-                    status: 'error',
-                });
-            }
+    const confirmDelete = (id) => {
+        setRoleToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!roleToDelete) return;
+        try {
+            await deleteRole(roleToDelete);
+            toast({
+                title: 'Role Deleted',
+                status: 'success',
+            });
+            fetchRoles();
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: error.response?.data?.message || 'Failed to delete role',
+                status: 'error',
+            });
+        } finally {
+            onAlertClose();
+            setRoleToDelete(null);
         }
     };
 
@@ -112,7 +131,7 @@ const RoleList = () => {
             render: (role) => (
                 <TableActions
                     onEdit={ROUTES.EDIT_ROLE.replace(':id', role._id)}
-                    onDelete={() => handleDelete(role._id)}
+                    onDelete={() => confirmDelete(role._id)}
                     editPermission="roles-update"
                     deletePermission="roles-delete"
                     isDeleteDisabled={role.name === 'Super Admin'}
@@ -161,6 +180,34 @@ const RoleList = () => {
                     totalItems
                 }}
             />
+
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete Role
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };

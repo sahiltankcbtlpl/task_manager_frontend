@@ -2,7 +2,8 @@ import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, us
 import EmptyState from '../../components/feedback/EmptyState';
 import { FiActivity } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
-import { getTasks } from '../../api/task.api';
+// import { getTasks } from '../../api/task.api';
+import useSocket from '../../hooks/useSocket';
 import Loader from '../../components/common/Loader';
 import { useProject } from '../../context/ProjectContext';
 
@@ -11,6 +12,7 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const toast = useToast();
     const { activeProjectId } = useProject();
+    const socket = useSocket();
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -50,9 +52,34 @@ const Dashboard = () => {
         };
 
         fetchStats();
-    }, [toast, activeProjectId]);
 
-    if (loading) return <Loader />;
+        if (socket) {
+            const handleTaskCreated = (data) => {
+                console.log('Socket event received: taskCreated', data);
+                fetchStats();
+            };
+            const handleTaskUpdated = (data) => {
+                console.log('Socket event received: taskUpdated', data);
+                fetchStats();
+            };
+            const handleTaskDeleted = (data) => {
+                console.log('Socket event received: taskDeleted', data);
+                fetchStats();
+            };
+
+            socket.on('taskCreated', handleTaskCreated);
+            socket.on('taskUpdated', handleTaskUpdated);
+            socket.on('taskDeleted', handleTaskDeleted);
+
+            return () => {
+                socket.off('taskCreated', handleTaskCreated);
+                socket.off('taskUpdated', handleTaskUpdated);
+                socket.off('taskDeleted', handleTaskDeleted);
+            };
+        }
+    }, [toast, activeProjectId, socket]);
+
+    if (loading) return <Loader type="card" />;
 
     return (
         <Box>

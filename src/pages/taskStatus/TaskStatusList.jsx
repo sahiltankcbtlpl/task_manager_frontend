@@ -1,5 +1,5 @@
-import { Box, Heading, Flex, Button, useToast, Badge } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { Box, Heading, Flex, Button, useToast, Badge, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
+import { useEffect, useState, useRef } from 'react';
 import { getTaskStatuses, deleteTaskStatus } from '../../api/taskStatus.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
@@ -25,6 +25,11 @@ const TaskStatusList = () => {
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
+
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     const fetchStatuses = async () => {
         try {
@@ -53,14 +58,22 @@ const TaskStatusList = () => {
         setCurrentPage(1);
     }, [debouncedSearchTerm]);
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this status?')) return;
+    const confirmDelete = (id) => {
+        setItemToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!itemToDelete) return;
         try {
-            await deleteTaskStatus(id);
+            await deleteTaskStatus(itemToDelete);
             toast({ title: 'Status deleted', status: 'success' });
             fetchStatuses();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to delete', status: 'error' });
+        } finally {
+            onAlertClose();
+            setItemToDelete(null);
         }
     };
 
@@ -101,7 +114,7 @@ const TaskStatusList = () => {
             render: (item) => (
                 <TableActions
                     onEdit={`${ROUTES.TASK_STATUS}/edit/${item._id}`}
-                    onDelete={() => handleDelete(item._id)}
+                    onDelete={() => confirmDelete(item._id)}
                     editPermission="task_status-update"
                     deletePermission="task_status-delete"
                     item={item}
@@ -152,6 +165,34 @@ const TaskStatusList = () => {
                     }}
                 />
             )}
+
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete Task Status
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };

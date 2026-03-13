@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     Heading,
@@ -7,7 +7,14 @@ import {
     HStack,
     Badge,
     useToast,
-    Flex
+    Flex,
+    useDisclosure,
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogContent,
+    AlertDialogOverlay
 } from '@chakra-ui/react';
 import { FiPlus } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
@@ -36,6 +43,11 @@ const StaffList = () => {
     const [roleFilter, setRoleFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [userToDelete, setUserToDelete] = useState(null);
 
     const fetchOptions = async () => {
         try {
@@ -78,26 +90,33 @@ const StaffList = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roleFilter, debouncedSearchTerm]);
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
-            try {
-                await deleteStaff(id);
-                toast({
-                    title: 'User deleted',
-                    status: 'success',
-                    duration: 3000,
-                    isClosable: true,
-                });
-                fetchStaff(); // Refresh list
-            } catch (error) {
-                toast({
-                    title: 'Error deleting user',
-                    description: error.response?.data?.message || 'Failed to delete',
-                    status: 'error',
-                    duration: 3000,
-                    isClosable: true,
-                });
-            }
+    const confirmDelete = (id) => {
+        setUserToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!userToDelete) return;
+        try {
+            await deleteStaff(userToDelete);
+            toast({
+                title: 'User deleted',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+            });
+            fetchStaff(); // Refresh list
+        } catch (error) {
+            toast({
+                title: 'Error deleting user',
+                description: error.response?.data?.message || 'Failed to delete',
+                status: 'error',
+                duration: 3000,
+                isClosable: true,
+            });
+        } finally {
+            onAlertClose();
+            setUserToDelete(null);
         }
     };
 
@@ -156,7 +175,7 @@ const StaffList = () => {
             render: (user) => (
                 <TableActions
                     onEdit={`/staff/${user._id}/edit`}
-                    onDelete={() => handleDelete(user._id)}
+                    onDelete={() => confirmDelete(user._id)}
                     editPermission="users-update"
                     deletePermission="users-delete"
                     item={user}
@@ -211,6 +230,34 @@ const StaffList = () => {
                     totalItems
                 }}
             />
+
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete User
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };

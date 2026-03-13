@@ -114,7 +114,7 @@ const TeamList = () => {
             </Flex>
 
             {loading ? (
-                <Loader />
+                <Loader type="table" />
             ) : filteredTeamData.length === 0 ? (
                 <EmptyState title="No Results" description="No projects or team members matched your search." icon={FiUsers} />
             ) : (

@@ -70,7 +70,7 @@ const EditProject = () => {
         }
     };
 
-    if (loading) return <Loader />;
+    if (loading) return <Loader type="default" />;
 
     return (
         <Box maxW="container.md" mx="auto" mt={8}>

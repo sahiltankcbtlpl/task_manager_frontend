@@ -8,6 +8,7 @@ import { FiX } from 'react-icons/fi';
 import { createDocument } from '../../api/document.api';
 import { useProject } from '../../context/ProjectContext';
 import { getProjectMembers } from '../../api/project.api';
+import useAuth from '../../hooks/useAuth';
 import TableSelect from '../../components/common/TableSelect';
 import Select from 'react-select'; // Use a multi-select if available or just map over it.
 // React-select is standard, but assuming standard chakra ui is used, let's use a basic multi-select approach
@@ -21,6 +22,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
 
     const [memberOptions, setMemberOptions] = useState([]);
     const { activeProjectId } = useProject();
+    const { user: currentUser } = useAuth();
     const toast = useToast();
     const fileInputRef = useRef(null);
 
@@ -29,7 +31,10 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
             const fetchMembers = async () => {
                 try {
                     const members = await getProjectMembers(activeProjectId);
-                    setMemberOptions(members.map(m => ({ value: m._id, label: m.name })));
+                    const options = members
+                        .filter(m => m._id !== currentUser?._id)
+                        .map(m => ({ value: m._id, label: m.name }));
+                    setMemberOptions(options);
                 } catch (error) {
                     console.error('Failed to fetch project members', error);
                 }

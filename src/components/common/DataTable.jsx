@@ -9,27 +9,12 @@ import {
     Box,
     Spinner,
     Center,
-    Text
+    Text,
+    Skeleton,
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 
 const DataTable = ({ columns, data, isLoading, emptyMessage = "No data found", pagination }) => {
-    if (isLoading) {
-        return (
-            <Center h="200px">
-                <Spinner size="xl" />
-            </Center>
-        );
-    }
-
-    if (!data || data.length === 0) {
-        return (
-            <Box bg="white" shadow="md" borderRadius="lg" p={6} textAlign="center">
-                <Text color="gray.500">{emptyMessage}</Text>
-            </Box>
-        );
-    }
-
     return (
         <Box>
             <Box bg="white" shadow="md" borderRadius="lg" overflowX="auto">
@@ -42,17 +27,38 @@ const DataTable = ({ columns, data, isLoading, emptyMessage = "No data found", p
                         </Tr>
                     </Thead>
                     <Tbody>
-                        {data.map((row, rowIndex) => (
-                            <Tr key={row._id || rowIndex}>
-                                {columns.map((col, colIndex) => (
-                                    <Td key={`${rowIndex}-${colIndex}`}>
-                                        {col.render
-                                            ? col.render(row)
-                                            : row[col.accessor]}
-                                    </Td>
-                                ))}
+                        {isLoading ? (
+                            // Render skeleton rows when loading
+                            Array.from({ length: Math.max(1, pagination?.pageSize || 5) }).map((_, rowIndex) => (
+                                <Tr key={`skeleton-${rowIndex}`}>
+                                    {columns.map((_, colIndex) => (
+                                        <Td key={`skeleton-${rowIndex}-${colIndex}`}>
+                                            <Skeleton height="20px" borderRadius="md" w={colIndex === 0 ? "80%" : "60%"} />
+                                        </Td>
+                                    ))}
+                                </Tr>
+                            ))
+                        ) : data && data.length > 0 ? (
+                            // Render actual data rows
+                            data.map((row, rowIndex) => (
+                                <Tr key={row._id || rowIndex}>
+                                    {columns.map((col, colIndex) => (
+                                        <Td key={`${rowIndex}-${colIndex}`}>
+                                            {col.render
+                                                ? col.render(row)
+                                                : row[col.accessor]}
+                                        </Td>
+                                    ))}
+                                </Tr>
+                            ))
+                        ) : (
+                            // Empty state within the table body (fallback if outer !data condition didn't catch it)
+                            <Tr>
+                                <Td colSpan={columns.length} textAlign="center">
+                                    <Text color="gray.500">{emptyMessage}</Text>
+                                </Td>
                             </Tr>
-                        ))}
+                        )}
                     </Tbody>
                 </Table>
             </Box>

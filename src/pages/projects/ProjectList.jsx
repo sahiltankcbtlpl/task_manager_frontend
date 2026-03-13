@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Box, Heading, Flex, Button, useToast, Wrap, WrapItem, Tag, Avatar, TagLabel, Text } from '@chakra-ui/react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { Box, Heading, Flex, Button, useToast, Wrap, WrapItem, Tag, Avatar, TagLabel, Text, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
 import { FiPlus, FiCheckSquare } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 
@@ -26,6 +26,11 @@ const ProjectList = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(5);
+
+    // Delete Confirmation State
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [projectToDelete, setProjectToDelete] = useState(null);
 
     const fetchProjects = async () => {
         try {
@@ -61,14 +66,22 @@ const ProjectList = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [debouncedSearchTerm]);
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this project?')) return;
+    const confirmDelete = (id) => {
+        setProjectToDelete(id);
+        onAlertOpen();
+    };
+
+    const handleDelete = async () => {
+        if (!projectToDelete) return;
         try {
-            await deleteProject(id);
+            await deleteProject(projectToDelete);
             toast({ title: 'Project deleted', status: 'success' });
             fetchProjects();
         } catch (error) {
             toast({ title: 'Error', description: 'Failed to delete', status: 'error' });
+        } finally {
+            onAlertClose();
+            setProjectToDelete(null);
         }
     };
 
@@ -114,7 +127,7 @@ const ProjectList = () => {
                 render: (project) => (
                     <TableActions
                         onEdit={`${ROUTES.PROJECTS}/edit/${project._id}`}
-                        onDelete={() => handleDelete(project._id)}
+                        onDelete={() => confirmDelete(project._id)}
                         editPermission="projects-update"
                         deletePermission="projects-delete"
                         item={project}
@@ -152,7 +165,7 @@ const ProjectList = () => {
             </Flex>
 
             {loading ? (
-                <Loader />
+                <Loader type="table" />
             ) : projects.length === 0 ? (
                 <EmptyState title="No Projects" description="Create a project to get started" icon={FiCheckSquare} />
             ) : (
@@ -170,6 +183,34 @@ const ProjectList = () => {
                     }}
                 />
             )}
+
+            <AlertDialog
+                isOpen={isAlertOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={onAlertClose}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Delete Project
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Are you sure? You can't undo this action afterwards.
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={onAlertClose}>
+                                Cancel
+                            </Button>
+                            <Button colorScheme="red" onClick={handleDelete} ml={3}>
+                                Delete
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
         </Box>
     );
 };

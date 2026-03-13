@@ -10,7 +10,9 @@ const TableActions = ({
     editPermission, // string
     deletePermission, // string
     isDeleteDisabled = false,
-    item // optional item to pass to callbacks if needed
+    item, // optional item to pass to callbacks if needed
+    hideEdit = false,
+    hideDelete = false
 }) => {
     const navigate = useNavigate();
 
@@ -34,7 +36,7 @@ const TableActions = ({
 
     return (
         <HStack spacing={2}>
-            {editPermission ? (
+            {!hideEdit && (editPermission ? (
                 <CanAccess permission={editPermission}>
                     <Tooltip label="Edit">
                         <IconButton
@@ -58,9 +60,9 @@ const TableActions = ({
                         onClick={handleEdit}
                     />
                 </Tooltip>
-            )}
+            ))}
 
-            {deletePermission ? (
+            {!hideDelete && (deletePermission ? (
                 <CanAccess permission={deletePermission}>
                     <Tooltip label="Delete">
                         <IconButton
@@ -86,7 +88,7 @@ const TableActions = ({
                         isDisabled={isDeleteDisabled}
                     />
                 </Tooltip>
-            )}
+            ))}
         </HStack>
     );
 };

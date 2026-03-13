@@ -48,10 +48,12 @@ const EditDocumentModal = ({ isOpen, onClose, onSuccess, document }) => {
             const fetchMembers = async () => {
                 try {
                     const members = await getProjectMembers(projectIdToFetch);
-                    const options = members.map(m => ({
-                        value: m._id,
-                        label: m.name
-                    }));
+                    const options = members
+                        .filter(m => m._id !== document.owner?._id && m._id !== document.owner)
+                        .map(m => ({
+                            value: m._id,
+                            label: m.name
+                        }));
                     setMemberOptions(options);
                 } catch (error) {
                     console.error('Failed to fetch project members', error);
