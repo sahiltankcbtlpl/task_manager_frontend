@@ -71,7 +71,10 @@ const ReviewRequestModal = ({ isOpen, onClose, document, onSuccess }) => {
                                 <Box key={req._id} p={4} borderWidth={1} borderRadius="md" bg="blue.50" borderColor="blue.100">
                                     <HStack justify="space-between">
                                         <Box>
-                                            <Text fontWeight="bold">{req.requestedBy?.name}</Text>
+                                            <HStack>
+                                                <Text fontWeight="bold">{req.requestedBy?.name}</Text>
+                                                <Badge colorScheme="blue" fontSize="xs" size="sm" ml={2}>{req.requestType === 'edit' ? 'EDIT' : 'VIEW'}</Badge>
+                                            </HStack>
                                             <Text fontSize="sm" color="gray.600">{req.requestedBy?.email}</Text>
                                         </Box>
                                         <HStack>
@@ -111,6 +114,7 @@ const ReviewRequestModal = ({ isOpen, onClose, document, onSuccess }) => {
                                             <Badge colorScheme={req.status === 'accepted' ? 'green' : 'red'}>
                                                 {req.status}
                                             </Badge>
+                                            <Badge variant="outline" colorScheme="blue" fontSize="xs">{req.requestType === 'edit' ? 'EDIT' : 'VIEW'}</Badge>
                                         </HStack>
                                     ))}
                                 </VStack>
