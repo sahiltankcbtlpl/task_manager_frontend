@@ -350,7 +350,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                                     {isOwner || isSuperAdmin ? (
                                         <VStack align="stretch" spacing={3}>
                                             <Select
-                                                options={memberOptions}
+                                                options={memberOptions.filter(opt => !permissions.some(p => compareIds(p.user, opt.value)))}
                                                 placeholder="Add user..."
                                                 onChange={(opt) => opt && handleAddPermission(opt.value, 'view')}
                                                 value={null}
