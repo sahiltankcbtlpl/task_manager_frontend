@@ -64,7 +64,7 @@ const CreateTask = ({ category = 'TASK' }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const promises = [getTaskStatuses()];
+                const promises = [getTaskStatuses({ project: activeProjectId })];
                 if (activeProjectId) {
                     promises.push(getProjectMembers(activeProjectId));
                 }
@@ -74,7 +74,10 @@ const CreateTask = ({ category = 'TASK' }) => {
                 const usersRes = activeProjectId ? results[1] : [];
 
                 const staffOptions = usersRes
-                    .filter(u => (u.role?.name || u.role) !== ROLES.ADMIN)
+                    .filter(u => {
+                        const rName = u.role?.name || u.role;
+                        return rName !== ROLES.ADMIN && rName !== ROLES.OWNER;
+                    })
                     .map(u => ({ label: u.name, value: u._id }));
 
                 const statusOptions = statusRes

@@ -3,11 +3,13 @@ import { Box, Heading, VStack, HStack, useToast, FormControl, FormLabel, Select 
 import { Formik, Form, useField } from 'formik';
 import * as Yup from 'yup';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 import Input from '../../components/common/Input';
 import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 import Button from '../../components/common/Button';
 import UserMultiSelect from '../../components/projects/UserMultiSelect';
+import { useProject } from '../../context/ProjectContext';
 import { createProject } from '../../api/project.api';
 import { getStaffList } from '../../api/user.api';
 import { ROUTES } from '../../config/routes.config';
@@ -21,6 +23,7 @@ const CreateProjectSchema = Yup.object({
 
 
 const CreateProject = () => {
+    const { user: currentUser } = useAuth();
     const toast = useToast();
     const navigate = useNavigate();
     const [users, setUsers] = useState([]);
@@ -31,7 +34,7 @@ const CreateProject = () => {
                 const res = await getStaffList();
                 // Depending on requirements, we can exclude Super Admins
                 const staffOptions = res
-                    .filter(u => (u.role?.name || u.role) !== 'Super Admin');
+                    .filter(u => (u.role?.name || u.role) !== 'Super Admin' && u._id !== currentUser?._id);
                 setUsers(staffOptions);
             } catch (error) {
                 toast({ title: 'Failed to load users', status: 'error' });
@@ -40,9 +43,11 @@ const CreateProject = () => {
         fetchUsers();
     }, [toast]);
 
+    const { refreshProjects } = useProject();
     const handleSubmit = async (values, actions) => {
         try {
             await createProject(values);
+            await refreshProjects();
             toast({ title: 'Project Created', status: 'success' });
             navigate(ROUTES.PROJECTS);
         } catch (error) {

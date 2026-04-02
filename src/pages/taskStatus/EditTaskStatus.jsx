@@ -4,11 +4,13 @@ import { getTaskStatusById, updateTaskStatus } from '../../api/taskStatus.api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config';
 import { useState, useEffect } from 'react';
+import { useProject } from '../../context/ProjectContext';
 
 const EditTaskStatus = () => {
     const { id } = useParams();
     const toast = useToast();
     const navigate = useNavigate();
+    const { activeProjectId } = useProject();
     const [initialValues, setInitialValues] = useState(null);
     const [loading, setLoading] = useState(true);
 

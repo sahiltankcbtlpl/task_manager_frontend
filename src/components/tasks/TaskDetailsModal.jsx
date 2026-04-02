@@ -49,10 +49,12 @@ const TaskDetailsModal = ({ isOpen, onClose, task }) => {
                             </Text>
                         </Box>
 
-                        <Box>
-                            <Text fontWeight="bold" mb={1}>Description</Text>
-                            <Text whiteSpace="pre-wrap">{task.description}</Text>
-                        </Box>
+                        {task.description && (
+                            <Box>
+                                <Text fontWeight="bold" mb={1}>Description</Text>
+                                <Text whiteSpace="pre-wrap">{task.description}</Text>
+                            </Box>
+                        )}
 
                         {task.attachment && (
                             <Box mt={4}>

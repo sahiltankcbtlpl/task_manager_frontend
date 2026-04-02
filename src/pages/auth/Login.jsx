@@ -3,8 +3,9 @@ import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import Input from '../../components/common/Input';
 import useAuth from '../../hooks/useAuth';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config';
+import { Link } from '@chakra-ui/react';
 
 const LoginSchema = Yup.object().shape({
     email: Yup.string().email('Invalid email').required('Required'),
@@ -69,6 +70,13 @@ const Login = () => {
                                     <Button type="submit" w="full" isLoading={isSubmitting} mt={4}>
                                         Sign In
                                     </Button>
+
+                                    <Text color="gray.600" fontSize="sm" textAlign="center">
+                                        Don't have an account?{' '}
+                                        <Link as={RouterLink} to={ROUTES.REGISTER} color="brand.500" fontWeight="semibold">
+                                            Register here
+                                        </Link>
+                                    </Text>
                                 </VStack>
                             </Form>
                         )}

@@ -16,34 +16,7 @@ import { getProjects } from '../../api/project.api';
 import { useProject } from '../../context/ProjectContext';
 
 const ProjectSelector = () => {
-  const { activeProjectId, setActiveProjectId } = useProject();
-
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  /* ---------------------------- data fetching ---------------------------- */
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchProjects = async () => {
-      try {
-        const data = await getProjects({});
-        if (!mounted) return;
-
-        setProjects(data);
-      } catch (err) {
-        console.error('Failed to fetch projects for selector', err);
-      } finally {
-        mounted && setLoading(false);
-      }
-    };
-
-    fetchProjects();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const { activeProjectId, setActiveProjectId, projects, loading } = useProject();
 
   // Auto-select the first project if none is active
   useEffect(() => {

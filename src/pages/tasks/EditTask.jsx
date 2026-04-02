@@ -66,11 +66,11 @@ const EditTask = ({ category = 'TASK' }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch essential data first
-                const [taskData, statusData] = await Promise.all([
-                    getTaskById(id),
-                    getTaskStatuses()
-                ]);
+                // Fetch essential data
+                const taskData = await getTaskById(id);
+                const currentProjectId = activeProjectId || taskData.project?._id || taskData.project;
+                
+                const statusData = await getTaskStatuses({ project: currentProjectId });
 
                 // Try fetching staff list from project members (optional for some roles)
                 let staffData = [];
@@ -92,7 +92,7 @@ const EditTask = ({ category = 'TASK' }) => {
 
                 const filteredUsers = staffData.filter(u => {
                     const roleName = u.role?.name || u.role;
-                    return roleName !== ROLES.ADMIN;
+                    return roleName !== ROLES.ADMIN && roleName !== ROLES.OWNER;
                 });
 
                 setUsers(filteredUsers.map(u => ({ label: u.name, value: u._id })));

@@ -1,10 +1,10 @@
-import { Box, Heading, Flex, Button, useToast, Badge, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, Text, VStack, Divider, IconButton, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
+import { Box, Heading, Flex, Button, useToast, Badge, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, Text, VStack, Divider, IconButton, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, Menu, MenuButton, MenuList, MenuItem, FormControl, FormLabel, Select } from '@chakra-ui/react';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { getDocuments, deleteDocument, requestReview } from '../../api/document.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
-import { FiPlus, FiFileText, FiEye, FiEdit2 } from 'react-icons/fi';
+import { FiPlus, FiFileText, FiEye, FiEdit2, FiChevronDown } from 'react-icons/fi';
 import DataTable from '../../components/common/DataTable';
 import { useProject } from '../../context/ProjectContext';
 import useAuth from '../../hooks/useAuth';
@@ -22,10 +22,37 @@ const DocumentList = () => {
     const [loading, setLoading] = useState(true);
     const toast = useToast();
     const { user: currentUser } = useAuth();
-    const { activeProjectId, setActiveProjectId } = useProject();
+    const { activeProjectId, setActiveProjectId, projects } = useProject();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isProjectSelectModalOpen, setIsProjectSelectModalOpen] = useState(false);
+    const [pendingDocType, setPendingDocType] = useState(null);
+    const [tempSelectedProject, setTempSelectedProject] = useState('');
+
+    const handleCreateClick = (type) => {
+        if (!activeProjectId) {
+            setPendingDocType(type);
+            setTempSelectedProject('');
+            setIsProjectSelectModalOpen(true);
+        } else {
+            setSelectedDocForEdit({ name: `Untitled.${type}` });
+            setIsEditorModalOpen(true);
+        }
+    };
+
+    const handleConfirmProjectSelection = () => {
+        if (!tempSelectedProject) {
+            toast({ title: 'Please select a project first', status: 'warning' });
+            return;
+        }
+        setActiveProjectId(tempSelectedProject);
+        setIsProjectSelectModalOpen(false);
+        setTimeout(() => {
+            setSelectedDocForEdit({ name: `Untitled.${pendingDocType}` });
+            setIsEditorModalOpen(true);
+        }, 100);
+    };
     const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
     const [selectedDocForEdit, setSelectedDocForEdit] = useState(null);
     const [selectedDocForReview, setSelectedDocForReview] = useState(null);
@@ -107,9 +134,16 @@ const DocumentList = () => {
         if (!doc.fileUrl) return;
 
         const currentOrigin = window.location.origin;
-        const apiUrl = currentOrigin.includes('devtunnels.ms')
-            ? currentOrigin.replace(/(?:-\d+)?\.inc1\.devtunnels\.ms/, '-5000.inc1.devtunnels.ms')
-            : (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+        const currentHostname = window.location.hostname;
+
+        let apiUrl = '';
+        if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+            apiUrl = 'http://localhost:5000';
+        } else if (currentOrigin.includes('devtunnels.ms')) {
+            apiUrl = currentOrigin.replace(/(?:-\d+)?\.inc1\.devtunnels\.ms/, '-5000.inc1.devtunnels.ms');
+        } else {
+            apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+        }
 
         const fullUrl = doc.fileUrl.startsWith('http') ? doc.fileUrl : `${apiUrl}${doc.fileUrl}`;
         setViewingDoc({ ...doc, fullUrl });
@@ -238,9 +272,19 @@ const DocumentList = () => {
             <Flex justify="space-between" align="center" mb={6}>
                 <Heading size="lg">Documents</Heading>
                 <Flex gap={2}>
-                    <Button leftIcon={<FiEdit2 />} colorScheme="brand" variant="outline" onClick={() => { setSelectedDocForEdit(null); setIsEditorModalOpen(true); }}>
-                        Create Document
-                    </Button>
+                    <Menu>
+                        <MenuButton as={Button} leftIcon={<FiEdit2 />} rightIcon={<FiChevronDown />} colorScheme="brand" variant="outline">
+                            Create Document
+                        </MenuButton>
+                        <MenuList>
+                            <MenuItem onClick={() => handleCreateClick('txt')}>
+                                Text File (.txt)
+                            </MenuItem>
+                            <MenuItem onClick={() => handleCreateClick('docx')}>
+                                Doc (.docx)
+                            </MenuItem>
+                        </MenuList>
+                    </Menu>
                     <Button leftIcon={<FiPlus />} colorScheme="brand" onClick={() => setIsUploadModalOpen(true)}>
                         Upload Document
                     </Button>
@@ -334,6 +378,37 @@ const DocumentList = () => {
                     </AlertDialogContent>
                 </AlertDialogOverlay>
             </AlertDialog>
+
+            {/* Select Project Required Modal */}
+            <Modal isOpen={isProjectSelectModalOpen} onClose={() => setIsProjectSelectModalOpen(false)}>
+                <ModalOverlay />
+                <ModalContent p={2}>
+                    <ModalHeader pb={2}>Select a Project</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <Text mb={4} color="gray.600" fontSize="sm">
+                            Documents must be created inside a project. Please select one to continue.
+                        </Text>
+                        <FormControl>
+                            <FormLabel>Project</FormLabel>
+                            <Select
+                                placeholder="Select a project"
+                                value={tempSelectedProject}
+                                onChange={(e) => setTempSelectedProject(e.target.value)}
+                            >
+                                {projects?.map(p => (
+                                    <option key={p._id} value={p._id}>{p.title}</option>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button colorScheme="brand" onClick={handleConfirmProjectSelection} isDisabled={!tempSelectedProject}>
+                            Continue
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
 
             {/* Document Viewer Modal */}
             <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} size="5xl" isCentered>

@@ -7,11 +7,9 @@ import {
 import { FiX } from 'react-icons/fi';
 import { createDocument } from '../../api/document.api';
 import { useProject } from '../../context/ProjectContext';
-import { getProjectMembers } from '../../api/project.api';
+import { getProjectMembers, getProjects } from '../../api/project.api';
 import useAuth from '../../hooks/useAuth';
-import TableSelect from '../../components/common/TableSelect';
-import Select from 'react-select'; // Use a multi-select if available or just map over it.
-// React-select is standard, but assuming standard chakra ui is used, let's use a basic multi-select approach
+import Select from 'react-select';
 
 const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
     const [name, setName] = useState('');
@@ -21,16 +19,38 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
 
     const [memberOptions, setMemberOptions] = useState([]);
+    const [projectOptions, setProjectOptions] = useState([]);
+    const [selectedProject, setSelectedProject] = useState(null);
+
     const { activeProjectId } = useProject();
     const { user: currentUser } = useAuth();
     const toast = useToast();
     const fileInputRef = useRef(null);
 
+    // Fetch projects if no active project is selected
     useEffect(() => {
-        if (isOpen && activeProjectId) {
+        if (isOpen && !activeProjectId) {
+            const fetchProjects = async () => {
+                try {
+                    const data = await getProjects();
+                    const projects = Array.isArray(data) ? data : (data.projects || []);
+                    const options = projects.map(p => ({ value: p._id, label: p.title }));
+                    setProjectOptions(options);
+                } catch (error) {
+                    console.error('Failed to fetch projects', error);
+                }
+            };
+            fetchProjects();
+        }
+    }, [isOpen, activeProjectId]);
+
+    // Fetch members when the selected project changes
+    useEffect(() => {
+        const projectId = activeProjectId || selectedProject?.value;
+        if (isOpen && projectId) {
             const fetchMembers = async () => {
                 try {
-                    const members = await getProjectMembers(activeProjectId);
+                    const members = await getProjectMembers(projectId);
                     const options = members
                         .filter(m => m._id !== currentUser?._id)
                         .map(m => ({ value: m._id, label: m.name }));
@@ -40,14 +60,18 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
                 }
             };
             fetchMembers();
+        } else {
+            setMemberOptions([]);
+            setAllowedUsers([]);
         }
-    }, [isOpen, activeProjectId]);
+    }, [isOpen, activeProjectId, selectedProject, currentUser?._id]);
 
     const resetForm = () => {
         setName('');
         setDescription('');
         setFile(null);
         setAllowedUsers([]);
+        setSelectedProject(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -63,6 +87,14 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const projectId = activeProjectId || selectedProject?.value;
+        
+        if (!projectId) {
+            toast({ title: 'Please select a project', status: 'error' });
+            return;
+        }
+
         if (!file || !name || !description) {
             toast({ title: 'Please fill all required fields', status: 'error' });
             return;
@@ -71,7 +103,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             setLoading(true);
             const formData = new FormData();
-            formData.append('project', activeProjectId);
+            formData.append('project', projectId);
             formData.append('name', name);
             formData.append('description', description);
             formData.append('file', file);
@@ -88,7 +120,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
         } catch (error) {
             toast({
                 title: 'Upload failed',
-                description: error.response?.data?.message,
+                description: error.response?.data?.message || 'Something went wrong',
                 status: 'error'
             });
         } finally {
@@ -97,36 +129,51 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} size="lg">
+        <Modal isOpen={isOpen} onClose={handleClose} size="xl">
             <ModalOverlay />
             <ModalContent as="form" onSubmit={handleSubmit}>
                 <ModalHeader>Upload Document</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
-                    <VStack spacing={4}>
+                    <VStack spacing={4} align="stretch">
+                        {!activeProjectId && (
+                            <FormControl isRequired>
+                                <FormLabel>Project</FormLabel>
+                                <Select
+                                    options={projectOptions}
+                                    value={selectedProject}
+                                    onChange={(option) => {
+                                        setSelectedProject(option);
+                                        setAllowedUsers([]); // Reset allowed users when project changes
+                                    }}
+                                    placeholder="Select a project"
+                                />
+                            </FormControl>
+                        )}
+
                         <FormControl isRequired>
                             <FormLabel>Document Name</FormLabel>
-                            <Input value={name} onChange={(e) => setName(e.target.value)} />
+                            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Project Roadmap" />
                         </FormControl>
 
                         <FormControl isRequired>
                             <FormLabel>Description</FormLabel>
-                            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+                            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this document about?" />
                         </FormControl>
 
                         <FormControl>
                             <FormLabel>Allowed Users</FormLabel>
-                            {/* Simple multi select or native select multiple */}
                             <Select
                                 isMulti
                                 options={memberOptions}
                                 value={allowedUsers}
                                 onChange={setAllowedUsers}
-                                placeholder="Select users (optional)"
+                                placeholder={activeProjectId || selectedProject ? "Select users (optional)" : "Select a project first"}
+                                isDisabled={!activeProjectId && !selectedProject}
                             />
                         </FormControl>
 
-                        <FormControl isRequired={!file}>
+                        <FormControl isRequired>
                             <FormLabel>File</FormLabel>
                             <Flex align="center" gap={2}>
                                 <Input
@@ -155,7 +202,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
                         Cancel
                     </Button>
                     <Button colorScheme="brand" type="submit" isLoading={loading}>
-                        Upload
+                        Upload Document
                     </Button>
                 </ModalFooter>
             </ModalContent>

@@ -10,6 +10,8 @@ export const SocketProvider = ({ children }) => {
     const socketRef = useRef(null);
     const [socket, setSocket] = useState(null);
 
+    const userId = user?._id || user?.id || null;
+
     useEffect(() => {
         if (!user) {
             // User logged out → disconnect socket
@@ -56,7 +58,7 @@ export const SocketProvider = ({ children }) => {
             socketRef.current = null;
             setSocket(null);
         };
-    }, [user]);
+    }, [userId]);
 
     return (
         <SocketContext.Provider value={socket}>

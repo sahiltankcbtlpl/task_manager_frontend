@@ -1,5 +1,6 @@
-import Login from './pages/Auth/Login';
-import Dashboard from './pages/Dashboard/Dashboard';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Dashboard from './pages/dashboard/Dashboard';
 import Profile from './pages/Profile/Profile';
 import StaffList from './pages/staff/StaffList';
 import CreateStaff from './pages/staff/CreateStaff';
@@ -25,11 +26,13 @@ import MainLayout from './components/Layout/MainLayout';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import DocumentPage from './pages/documents/DocumentPage';
+import CompanySettings from './pages/companies/CompanySettings';
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
@@ -75,6 +78,9 @@ function App() {
           <Route path="/projects" element={<ProjectList />} />
           <Route path="/projects/create" element={<CreateProject />} />
           <Route path="/projects/edit/:id" element={<EditProject />} />
+
+          {/* Company Routes */}
+          <Route path="/settings/company" element={<CompanySettings />} />
 
           {/* Redirect root URL to dashboard, which redirects to login if not authenticated */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

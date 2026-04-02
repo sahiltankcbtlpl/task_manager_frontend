@@ -14,8 +14,11 @@ import useAuth from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import useDebounce from '../../hooks/useDebounce';
 
+import { useProject } from '../../context/ProjectContext';
+
 const TaskStatusList = () => {
     const { user: currentUser } = useAuth();
+    const { activeProjectId } = useProject();
     const [statuses, setStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
@@ -32,9 +35,14 @@ const TaskStatusList = () => {
     const [itemToDelete, setItemToDelete] = useState(null);
 
     const fetchStatuses = async () => {
+        if (!activeProjectId) {
+            setStatuses([]);
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
-            const params = {};
+            const params = { project: activeProjectId };
             if (debouncedSearchTerm) params.search = debouncedSearchTerm;
             const data = await getTaskStatuses(params);
             setStatuses(data);
@@ -51,12 +59,12 @@ const TaskStatusList = () => {
 
     useEffect(() => {
         fetchStatuses();
-    }, [debouncedSearchTerm]);
+    }, [debouncedSearchTerm, activeProjectId]);
 
     // Helper to reset page on search
     useEffect(() => {
         setCurrentPage(1);
-    }, [debouncedSearchTerm]);
+    }, [debouncedSearchTerm, activeProjectId]);
 
     const confirmDelete = (id) => {
         setItemToDelete(id);
@@ -148,8 +156,10 @@ const TaskStatusList = () => {
                     data={[]}
                     isLoading={true}
                 />
+            ) : !activeProjectId ? (
+                <EmptyState title="No Project Selected" description="Please select a project from the header to manage its task statuses" icon={FiList} />
             ) : statuses.length === 0 ? (
-                <EmptyState title="No Status" description="Create a status to get started" icon={FiList} />
+                <EmptyState title="No Status" description="Create a status to get started with this project" icon={FiList} />
             ) : (
                 <DataTable
                     columns={columns}

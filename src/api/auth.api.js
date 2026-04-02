@@ -19,3 +19,8 @@ export const updateProfile = async (userData) => {
     const response = await api.put('/auth/me', userData);
     return response.data;
 };
+
+export const register = async (registerData) => {
+    const response = await api.post('/auth/register', registerData);
+    return response.data;
+};

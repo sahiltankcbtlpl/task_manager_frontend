@@ -2,7 +2,7 @@ import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, us
 import EmptyState from '../../components/feedback/EmptyState';
 import { FiActivity } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
-// import { getTasks } from '../../api/task.api';
+import { getTasks } from '../../api/task.api';
 import useSocket from '../../hooks/useSocket';
 import Loader from '../../components/common/Loader';
 import { useProject } from '../../context/ProjectContext';

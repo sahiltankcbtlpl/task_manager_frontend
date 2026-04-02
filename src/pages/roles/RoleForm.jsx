@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
     Box,
     Heading,
@@ -30,6 +31,7 @@ const RoleSchema = Yup.object().shape({
 });
 
 const RoleForm = ({ initialValues, onSubmit, title, isSubmitting: parentSubmitting }) => {
+    const { user } = useAuth();
     const [permissionsList, setPermissionsList] = useState([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
@@ -40,13 +42,19 @@ const RoleForm = ({ initialValues, onSubmit, title, isSubmitting: parentSubmitti
                 const data = await getPermissions();
                 console.log("permissions", data);
 
-                setPermissionsList(data);
+                // Each DB Permission is already a module (e.g. { name: 'Users', value: 'users' })
+                // RoleForm constructs 'users-read', 'users-create' etc. from group.value + action
+                const rawPerms = Array.isArray(data) ? data : [];
+                setPermissionsList(rawPerms);
             } catch (error) {
+                console.error('Failed to load permissions:', error);
                 toast({
-                    title: 'Error',
-                    description: 'Failed to load permissions',
-                    status: 'error',
+                    title: 'Warning',
+                    description: 'Could not load permissions list. You can still save the role.',
+                    status: 'warning',
+                    duration: 4000,
                 });
+                setPermissionsList([]);
             } finally {
                 setLoading(false);
             }
@@ -54,8 +62,7 @@ const RoleForm = ({ initialValues, onSubmit, title, isSubmitting: parentSubmitti
         fetchPerms();
     }, [toast]);
 
-    // Group permissions by module
-
+    // Actions for CRUD columns
     const actions = ['read', 'create', 'update', 'delete'];
 
     if (loading) return <Spinner />;
@@ -99,7 +106,13 @@ const RoleForm = ({ initialValues, onSubmit, title, isSubmitting: parentSubmitti
                                             </Tr>
                                         </Thead>
                                         <Tbody>
-                                            {permissionsList.map((group) => {
+                                            {permissionsList
+                                                .filter(group => {
+                                                    // Only Super Admin can see/manage the 'permissions' group
+                                                    if (user?.role?.name === 'Super Admin') return true;
+                                                    return group.value !== 'permissions';
+                                                })
+                                                .map((group) => {
                                                 const rowPermissionValues = actions.map(
                                                     action => `${group.value}-${action}`
                                                 );

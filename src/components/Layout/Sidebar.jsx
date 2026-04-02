@@ -6,8 +6,10 @@ import CanAccess from "../common/CanAccess";
 import { SIDEBAR_ITEMS } from "../../config/sidebar.config";
 import PropTypes from "prop-types";
 import { color } from "framer-motion";
+import useAuth from "../../hooks/useAuth";
 
 const Sidebar = ({ isOpen, onClose, ...props }) => {
+    const { user } = useAuth();
     return (
         <Box
             w={{ base: "full", md: "250px" }}
@@ -44,6 +46,12 @@ const Sidebar = ({ isOpen, onClose, ...props }) => {
                             </Box>
                         </NavLink>
                     );
+
+                    if (item.ownerOnly) {
+                        const isOwner = user?.role === 'Company Owner' || user?.role?.name === 'Company Owner';
+                        if (!isOwner) return null;
+                        return <div key={item.to}>{LinkContent}</div>;
+                    }
 
                     if (item.permission) {
                         return (

@@ -4,7 +4,7 @@ import { getTasks, deleteTask, updateTask } from '../../api/task.api';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/feedback/EmptyState';
 import { FiPlus, FiCheckSquare, FiAlertCircle, FiUpload } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config'; // Need to add TASK routes
 import CanAccess from '../../components/common/CanAccess';
 import TableActions from '../../components/common/TableActions';
@@ -28,9 +28,10 @@ const TaskList = ({ category = 'TASK' }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, activeCompany } = useAuth();
     const { activeProjectId } = useProject();
     const socket = useSocket();
+    const navigate = useNavigate();
 
     const [statusOptions, setStatusOptions] = useState([]);
     const [assigneeOptions, setAssigneeOptions] = useState([]);
@@ -39,11 +40,22 @@ const TaskList = ({ category = 'TASK' }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+    const uniqueStatusOptions = useMemo(() => {
+        const uniqueMap = new Map();
+        statusOptions.forEach(opt => {
+            const labelLower = opt.label.trim().toLowerCase();
+            if (!uniqueMap.has(labelLower)) {
+                uniqueMap.set(labelLower, opt);
+            }
+        });
+        return Array.from(uniqueMap.values());
+    }, [statusOptions]);
+
     // Modal State
     const [selectedTask, setSelectedTask] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
-    
+
     // Delete Confirmation State
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
     const cancelRef = useRef();
@@ -57,7 +69,7 @@ const TaskList = ({ category = 'TASK' }) => {
     const fetchOptions = async () => {
         try {
             const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
-            const promises = [getTaskStatuses()];
+            const promises = [getTaskStatuses({ project: activeProjectId })];
             if (!isStaff) {
                 if (activeProjectId) {
                     promises.push(getProjectMembers(activeProjectId));
@@ -70,11 +82,11 @@ const TaskList = ({ category = 'TASK' }) => {
             const statusesData = results[0];
             const staffData = (!isStaff) ? results[1] : [];
 
-            setStatusOptions(statusesData.map(s => ({ label: s.name, value: s._id })));
+            setStatusOptions(statusesData.map(s => ({ label: s.name, value: s._id, project: s.project })));
             if (!isStaff) {
                 const filteredStaff = staffData.filter(u => {
                     const roleName = u.role?.name || u.role;
-                    return roleName !== ROLES.ADMIN;
+                    return roleName !== ROLES.ADMIN && roleName !== ROLES.OWNER;
                 });
                 setAssigneeOptions(filteredStaff.map(u => ({ label: u.name, value: u._id })));
             }
@@ -124,7 +136,7 @@ const TaskList = ({ category = 'TASK' }) => {
     useEffect(() => {
         fetchOptions();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeProjectId]);
+    }, [activeProjectId, activeCompany]);
 
     // Reset to page 1 ONLY when filters or search change
     useEffect(() => {
@@ -209,6 +221,20 @@ const TaskList = ({ category = 'TASK' }) => {
     const createText = isIssue ? 'Create Issue' : 'Create Task';
     const itemName = isIssue ? 'issue' : 'task';
 
+    const handleCreateClick = () => {
+        if (!activeProjectId) {
+            toast({
+                title: 'No Project Selected',
+                description: `Please select a project from the header before creating a ${itemName}.`,
+                status: 'warning',
+                duration: 3000,
+                isClosable: true,
+            });
+            return;
+        }
+        navigate(createRoute);
+    };
+
     const columns = useMemo(() => {
         const cols = [
             {
@@ -229,15 +255,21 @@ const TaskList = ({ category = 'TASK' }) => {
             {
                 header: 'Status',
                 accessor: 'taskStatus',
-                render: (task) => (
-                    <TableSelect
-                        value={task.taskStatus?._id || ''}
-                        options={statusOptions}
-                        onChange={(val) => handleUpdateTask(task._id, 'taskStatus', val)}
-                        isDisabled={!canUpdate}
-                        placeholder="Select Status"
-                    />
-                )
+                render: (task) => {
+                    const projectStatuses = !activeProjectId && task.project 
+                        ? statusOptions.filter(opt => opt.project === (task.project._id || task.project))
+                        : statusOptions;
+                    
+                    return (
+                        <TableSelect
+                            value={task.taskStatus?._id || ''}
+                            options={projectStatuses}
+                            onChange={(val) => handleUpdateTask(task._id, 'taskStatus', val)}
+                            isDisabled={!canUpdate}
+                            placeholder="Select Status"
+                        />
+                    );
+                }
             }
         ];
 
@@ -305,9 +337,13 @@ const TaskList = ({ category = 'TASK' }) => {
                         </Button>
                     </CanAccess>
                     <CanAccess permission="tasks-create">
-                        <Link to={createRoute}>
-                            <Button leftIcon={<FiPlus />} colorScheme="brand">{createText}</Button>
-                        </Link>
+                        <Button 
+                            leftIcon={<FiPlus />} 
+                            colorScheme="brand" 
+                            onClick={handleCreateClick}
+                        >
+                            {createText}
+                        </Button>
                     </CanAccess>
                 </HStack>
             </Flex>
@@ -322,7 +358,7 @@ const TaskList = ({ category = 'TASK' }) => {
                 </Box>
                 <TableFilter
                     placeholder="Filter by Status"
-                    options={statusOptions}
+                    options={uniqueStatusOptions}
                     value={statusFilter}
                     onChange={setStatusFilter}
                 />

@@ -57,9 +57,15 @@ export const SIDEBAR_ITEMS = [
         permission: 'roles-read',
     },
     {
+        label: 'Company Settings',
+        icon: FiBriefcase,
+        to: ROUTES.COMPANY_SETTINGS,
+        ownerOnly: true, // Specifically limited to Company Owner
+    },
+    {
         label: 'Permissions',
         icon: FiLock,
         to: ROUTES.PERMISSIONS,
-        permission: 'permissions-read',
+        permission: 'superadmin-only', // Only Super Admin should see this
     },
 ];

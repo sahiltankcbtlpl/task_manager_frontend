@@ -4,13 +4,27 @@ import { createTaskStatus } from '../../api/taskStatus.api';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../config/routes.config';
 
+import { useProject } from '../../context/ProjectContext';
+
 const CreateTaskStatus = () => {
     const toast = useToast();
     const navigate = useNavigate();
+    const { activeProjectId } = useProject();
 
     const handleSubmit = async (values, actions) => {
+        if (!activeProjectId) {
+            toast({
+                title: 'No Project Selected',
+                description: 'Please select a project before creating a status.',
+                status: 'error',
+                duration: 3000,
+            });
+            actions.setSubmitting(false);
+            return;
+        }
+
         try {
-            await createTaskStatus(values);
+            await createTaskStatus({ ...values, project: activeProjectId });
             toast({
                 title: 'Status Created',
                 status: 'success',

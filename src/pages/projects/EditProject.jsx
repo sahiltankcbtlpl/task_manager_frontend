@@ -3,12 +3,14 @@ import { Box, Heading, VStack, HStack, useToast, FormControl, FormLabel, Select 
 import { Formik, Form, useField } from 'formik';
 import * as Yup from 'yup';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 import Input from '../../components/common/Input';
 import { FormikMentionTextarea } from '../../components/common/MentionTextarea';
 import Button from '../../components/common/Button';
 import Loader from '../../components/common/Loader';
 import UserMultiSelect from '../../components/projects/UserMultiSelect';
+import { useProject } from '../../context/ProjectContext';
 import { getProjectById, updateProject } from '../../api/project.api';
 import { getStaffList } from '../../api/user.api';
 import { ROUTES } from '../../config/routes.config';
@@ -21,6 +23,7 @@ const EditProjectSchema = Yup.object({
 
 
 const EditProject = () => {
+    const { user: currentUser } = useAuth();
     const { id } = useParams();
     const toast = useToast();
     const navigate = useNavigate();
@@ -36,7 +39,7 @@ const EditProject = () => {
                 const usersRes = await getStaffList();
 
                 const staffOptions = usersRes
-                    .filter(u => (u.role?.name || u.role) !== 'Super Admin');
+                    .filter(u => (u.role?.name || u.role) !== 'Super Admin' && u._id !== currentUser?._id);
                 setUsers(staffOptions);
 
                 setInitialValues({
@@ -54,9 +57,11 @@ const EditProject = () => {
         fetchData();
     }, [id, toast, navigate]);
 
+    const { refreshProjects } = useProject();
     const handleSubmit = async (values, actions) => {
         try {
             await updateProject(id, values);
+            await refreshProjects();
             toast({ title: 'Project Updated', status: 'success' });
             navigate(ROUTES.PROJECTS);
         } catch (error) {

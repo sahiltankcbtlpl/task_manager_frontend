@@ -1,5 +1,6 @@
 export const ROUTES = {
     LOGIN: '/login',
+    REGISTER: '/register',
     DASHBOARD: '/',
     STAFF: '/staff',
     CREATE_STAFF: '/staff/create',
@@ -23,5 +24,6 @@ export const ROUTES = {
     EDIT_PROJECT: '/projects/edit/:id',
     TEAM: '/team',
     DOCUMENTS: '/documents',
+    COMPANY_SETTINGS: '/settings/company',
     NOT_FOUND: '*',
 };

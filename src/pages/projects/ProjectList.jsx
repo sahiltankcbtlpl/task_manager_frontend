@@ -3,6 +3,7 @@ import { Box, Heading, Flex, Button, useToast, Wrap, WrapItem, Tag, Avatar, TagL
 import { FiPlus, FiCheckSquare } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 
+import { useProject } from '../../context/ProjectContext';
 import { getProjects, deleteProject } from '../../api/project.api';
 import DataTable from '../../components/common/DataTable';
 import EmptyState from '../../components/feedback/EmptyState';
@@ -71,10 +72,12 @@ const ProjectList = () => {
         onAlertOpen();
     };
 
+    const { refreshProjects } = useProject();
     const handleDelete = async () => {
         if (!projectToDelete) return;
         try {
             await deleteProject(projectToDelete);
+            await refreshProjects();
             toast({ title: 'Project deleted', status: 'success' });
             fetchProjects();
         } catch (error) {

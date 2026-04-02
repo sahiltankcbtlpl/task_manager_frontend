@@ -4,6 +4,7 @@ import useAuth from '../../hooks/useAuth';
 import PropTypes from 'prop-types';
 import ProfileModal from './ProfileModal';
 import ProjectSelector from './ProjectSelector';
+import CompanySelector from './CompanySelector';
 
 const Header = ({ onOpenSidebar }) => {
     const { user, logout } = useAuth();
@@ -33,6 +34,10 @@ const Header = ({ onOpenSidebar }) => {
                     variant="ghost"
                     mr={4}
                 />
+
+                <Box display={{ base: 'none', md: 'block' }}>
+                    <CompanySelector />
+                </Box>
 
                 {/* Project Selector Component inserted here */}
                 <Box display={{ base: 'none', md: 'block' }}>
