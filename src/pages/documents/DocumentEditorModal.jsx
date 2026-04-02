@@ -3,7 +3,9 @@ import {
     Heading, Modal, ModalOverlay, ModalContent, ModalHeader,
     ModalBody, ModalCloseButton, Button, FormControl, FormLabel,
     Input, useToast, VStack, Flex, Text, Switch, Badge, Box,
-    IconButton, Divider, HStack
+    IconButton, Divider, HStack,
+    AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader,
+    AlertDialogContent, AlertDialogOverlay
 } from '@chakra-ui/react';
 import {
     FiSave, FiCheck, FiRefreshCw, FiAlertCircle,
@@ -139,8 +141,9 @@ const ENTER_PAGE_BREAK_THRESHOLD_PX = 24;
 const PAGE_GAP_PX = 24;
 
 // ─── Component ───────────────────────────────────────────────────────────────
-const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) => {
+const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, readOnly = false }) => {
     const [name, setName] = useState('Untitled.txt');
+    const [description, setDescription] = useState('Text document');
     const [content, setContent] = useState('');
     const [permissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -151,8 +154,12 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
     const [pageCount, setPageCount] = useState(1);
 
     const { activeProjectId } = useProject();
-    const { user: currentUser, updateUser: updateAuthUser } = useAuth();
+    const { user: currentUser, updateUser: updateAuthUser, activeCompany } = useAuth();
     const toast = useToast();
+
+    // Confirmation dialog state
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const cancelRef = useRef();
 
     // Refs for pagination (avoids stale closures in callbacks)
 
@@ -274,6 +281,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
 
         if (document) {
             setName(document.name || 'Untitled.txt');
+            setDescription(document.description || (document.name?.toLowerCase().endsWith('.docx') ? 'Doc document' : 'Text document'));
             setPermissions(document.permissions || []);
             setCurrentDoc(document);
             setSavingStatus(document._id ? 'saved' : 'idle');
@@ -296,6 +304,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
             }
         } else {
             setName('Untitled.txt');
+            setDescription('Text document');
             setContent('');
             setPermissions([]);
             setCurrentDoc(null);
@@ -333,10 +342,13 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
             return;
         }
 
+        // Prevent double saving
+        if (savingStatus === 'saving') return;
+
         try {
             if (!isAuto) {
                 setLoading(true);
-                setSavingStatus('saving'); // ✅ FIX
+                setSavingStatus('saving');
             }
 
             let savedDoc = currentDoc;
@@ -349,14 +361,14 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
 
             if (currentDoc?._id) {
                 savedDoc = isAuto
-                    ? await autosaveDocument(currentDoc._id, docPayload)
-                    : await updateDocument(currentDoc._id, docPayload);
+                    ? await autosaveDocument(currentDoc._id, { ...docPayload, description })
+                    : await updateDocument(currentDoc._id, { ...docPayload, description });
             } else {
                 savedDoc = await createDocument({
                     project: activeProjectId,
                     ...docPayload,
+                    description,
                     isEditorDocument: true,
-                    description: 'Text document',
                 });
             }
 
@@ -389,7 +401,6 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
             setSavingStatus('saved');
             if (!isAuto) {
                 toast({ title: 'Document saved', status: 'success' });
-                onSuccess();
             }
         } catch (error) {
             console.error('Save failed:', error);
@@ -413,7 +424,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
     const autosaveTimer = useRef(null);
 
     useEffect(() => {
-        if (!currentUser?.autosavePreference) return;
+        if (!currentUser?.autosavePreference || savingStatus !== 'unsaved') return;
 
         clearTimeout(autosaveTimer.current);
 
@@ -422,7 +433,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
         }, 2000);
 
         return () => clearTimeout(autosaveTimer.current);
-    }, [name, content, permissions, savingStatus]);
+    }, [name, content, permissions]);
     // ── Request edit access ───────────────────────────────────────────────────
     const handleRequestEditAccess = async () => {
         try {
@@ -466,6 +477,14 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                 : updated + currentExt;
         }
         setName(updated);
+
+        // Auto-update description if it's the default one
+        const isCurrentlyDocx = name.toLowerCase().endsWith('.docx');
+        const isUpdatedDocx = updated.toLowerCase().endsWith('.docx');
+        if (description === (isCurrentlyDocx ? 'Doc document' : 'Text document') || description === 'Text document' || description === 'Doc document') {
+            setDescription(isUpdatedDocx ? 'Doc document' : 'Text document');
+        }
+
         if (savingStatus === 'saved' || savingStatus === 'idle') setSavingStatus('unsaved');
     };
 
@@ -480,10 +499,36 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
         setSavingStatus('unsaved');
     };
 
+    // ── Helper to convert image to base64 ───────────────────────────────────
+    const getBase64Image = async (url) => {
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Tunnel-Skip-AntiPhish': 'true'
+                }
+            });
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+            const blob = await response.blob();
+            
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.error('Logo fetch error:', err);
+            return null;
+        }
+    };
+
     // ── Export PDF ────────────────────────────────────────────────────────────
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         const el = window.document.querySelector('.ck-content');
-        if (!el) { toast({ title: 'Could not find document content', status: 'error' }); return; }
+        if (!el) {
+            toast({ title: 'Could not find document content', status: 'error' });
+            return;
+        }
 
         const origFilter = el.style.filter;
         const origBg = el.style.background;
@@ -491,41 +536,114 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
         el.style.background = 'white';
 
         const lists = Array.from(el.querySelectorAll('ul, ol'));
-        const origListStyles = lists.map(l => l.style.cssText);
-        lists.forEach(l => { l.style.marginLeft = '20px'; l.style.paddingLeft = '40px'; });
+        const origListStyles = lists.map((l) => l.style.cssText);
+        lists.forEach((l) => {
+            l.style.marginLeft = '20px';
+            l.style.paddingLeft = '40px';
+        });
+
+        // Get company logo
+        let logoBase64 = null;
+        // console.log('Building logo URL. activeCompany:', activeCompany);
+        // console.log('currentUser companies:', currentUser?.companies);
+
+        const targetCompanyId = currentDoc?.company || activeCompany;
+        const companyData = currentUser?.companies?.find((c) => compareIds(c._id, targetCompanyId));
+        // console.log('Target companyData:', companyData);
+
+        if (companyData?.logo) {
+            try {
+                let logoUrl = companyData.logo;
+                if (!logoUrl.startsWith('http')) {
+                    const { hostname, host, protocol } = window.location;
+                    let apiBase = '';
+
+                    // 1. If we are on localhost, always use local backend to avoid CORS/Tunnel issues
+                    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                        apiBase = 'http://localhost:5000';
+                    } 
+                    // 2. If no VITE_API_URL but on Dev Tunnel, resolve port dynamically
+                    else if (hostname.includes('devtunnels.ms')) {
+                        const backendHost = host.replace(/-(?:\d+)(\.inc1\.devtunnels\.ms)/, '-5000$1');
+                        apiBase = `${protocol}//${backendHost}`;
+                    }
+                    // 3. Fallback to VITE_API_URL
+                    else if (import.meta.env.VITE_API_URL) {
+                        apiBase = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+                    }
+                    // 4. Ultimate fallback
+                    else {
+                        apiBase = window.location.origin;
+                    }
+
+                    logoUrl = `${apiBase}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`;
+                }
+                console.log('Final Logo URL:', logoUrl);
+                logoBase64 = await getBase64Image(logoUrl);
+            } catch (err) {
+                console.error('Failed to resolve company logo:', err);
+            }
+        }
 
         const opt = {
-            margin: 0,
+            margin: [25, 15, 15, 15],
             filename: name.replace(/\.[^/.]+$/, '') + '.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css'] },
+            pagebreak: { mode: ['css', 'legacy'] },
         };
 
         const restore = () => {
             el.style.filter = origFilter;
             el.style.background = origBg;
-            lists.forEach((l, i) => { l.style.cssText = origListStyles[i]; });
+            lists.forEach((l, i) => {
+                l.style.cssText = origListStyles[i];
+            });
         };
 
-        html2pdf().set(opt).from(el).save().then(restore).catch(err => {
+        try {
+            // Start the worker chain
+            let worker = html2pdf().set(opt).from(el).toPdf();
+
+            // Add the logo to every page if it exists
+            if (logoBase64) {
+                worker = worker.get('pdf').then((pdf) => {
+                    const totalPages = pdf.internal.getNumberOfPages();
+                    for (let i = 1; i <= totalPages; i++) {
+                        pdf.setPage(i);
+                        // Add logo at top-left (x=15mm, y=8mm, width=30mm)
+                        try {
+                            pdf.addImage(logoBase64, 'PNG', 15, 8, 30, 0);
+                        } catch (imgErr) {
+                            console.warn(`Failed to add logo to page ${i}:`, imgErr);
+                        }
+                    }
+                });
+            }
+
+            // Execute the chain and save
+            await worker.save();
+        } catch (err) {
             console.error('PDF Export Error:', err);
             toast({ title: 'PDF export failed', status: 'error' });
+        } finally {
             restore();
-        });
+        }
     };
 
     // ── Close ─────────────────────────────────────────────────────────────────
     const handleClose = async () => {
-        if (savingStatus === 'unsaved') {
+        if (savingStatus === 'unsaved' && !readOnly) {
             if (currentUser?.autosavePreference) {
                 await handleSave(true);
-            } else if (!window.confirm('You have unsaved changes. Close anyway?')) {
-                return;
+                onClose();
+            } else {
+                setIsConfirmOpen(true);
             }
+        } else {
+            onClose();
         }
-        onClose();
     };
 
     // ── Permission helpers ────────────────────────────────────────────────────
@@ -541,7 +659,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
     );
     const isSuperAdmin =
         currentUser?.role === 'Super Admin' || currentUser?.role?.name === 'Super Admin';
-    const canEdit = isOwner || hasEditPermission || isSuperAdmin;
+    const canEdit = (isOwner || hasEditPermission || isSuperAdmin) && !readOnly;
 
     const hasPendingEditRequest = currentDoc?.reviewRequests?.some(
         r =>
@@ -870,9 +988,10 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
 
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} size="full">
-            {/* Inject global styles once */}
-            <style>{EDITOR_STYLES}</style>
+        <>
+            <Modal isOpen={isOpen} onClose={handleClose} size="full">
+                {/* Inject global styles once */}
+                <style>{EDITOR_STYLES}</style>
 
             <ModalOverlay />
 
@@ -904,6 +1023,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                                     autoFocus
                                     size="sm"
                                     maxW="300px"
+                                    fontWeight="700"
                                 />
                             ) : (
                                 <HStack
@@ -916,19 +1036,19 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                                 </HStack>
                             )}
                             <Box>
-                                {savingStatus === 'saving' && (
+                                {!readOnly && savingStatus === 'saving' && (
                                     <Badge colorScheme="blue">
                                         <FiRefreshCw className="spin" style={{ display: 'inline', marginRight: 4 }} />
                                         Saving...
                                     </Badge>
                                 )}
-                                {savingStatus === 'saved' && (
+                                {!readOnly && savingStatus === 'saved' && (
                                     <Badge colorScheme="green">
                                         <FiCheck style={{ display: 'inline', marginRight: 4 }} />
                                         Saved
                                     </Badge>
                                 )}
-                                {savingStatus === 'unsaved' && (
+                                {!readOnly && savingStatus === 'unsaved' && (
                                     <Badge colorScheme="orange">
                                         <FiAlertCircle style={{ display: 'inline', marginRight: 4 }} />
                                         Unsaved changes
@@ -987,7 +1107,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                                         Save
                                     </Button>
                                 )}
-                                {!canEdit && currentDoc && (
+                                {!canEdit && !isOwner && !isSuperAdmin && currentDoc && !readOnly && (
                                     <Button
                                         leftIcon={
                                             hasPendingEditRequest ? <FiCheck /> : <FiEdit2 />
@@ -1018,16 +1138,18 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                  * Because it is a sibling of ModalBody (not inside it), it
                  * never scrolls, even when the user adds many pages.
                  */}
-                <Box
-                    id="ck-toolbar-wrapper"
-                    flexShrink={0}
-                    borderBottomWidth="1px"
-                    borderColor="gray.200"
-                    bg="white"
-                    minH="44px"
-                    overflow="visible"
-                    zIndex={10}
-                />
+                {canEdit && (
+                    <Box
+                        id="ck-toolbar-wrapper"
+                        flexShrink={0}
+                        borderBottomWidth="1px"
+                        borderColor="gray.200"
+                        bg="white"
+                        minH="44px"
+                        overflow="visible"
+                        zIndex={10}
+                    />
+                )}
 
                 {/* ── Main content (editor + sidebar) ─────────────────────── */}
                 <ModalBody
@@ -1189,7 +1311,44 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null }) =>
                     </Box>
                 </ModalBody>
             </ModalContent>
-        </Modal>
+            </Modal>
+
+            {/* Custom confirmation dialog for unsaved changes */}
+            <AlertDialog
+                isOpen={isConfirmOpen}
+                leastDestructiveRef={cancelRef}
+                onClose={() => setIsConfirmOpen(false)}
+                isCentered
+            >
+                <AlertDialogOverlay>
+                    <AlertDialogContent>
+                        <AlertDialogHeader fontSize="lg" fontWeight="bold">
+                            Unsaved Changes
+                        </AlertDialogHeader>
+
+                        <AlertDialogBody>
+                            Unsaved changes will be lost. Close anyway?
+                        </AlertDialogBody>
+
+                        <AlertDialogFooter>
+                            <Button ref={cancelRef} onClick={() => setIsConfirmOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                colorScheme="red" 
+                                onClick={() => {
+                                    setIsConfirmOpen(false);
+                                    onClose();
+                                }} 
+                                ml={3}
+                            >
+                                Close Anyway
+                            </Button>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialogOverlay>
+            </AlertDialog>
+        </>
     );
 };
 

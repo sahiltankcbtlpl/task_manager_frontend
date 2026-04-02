@@ -34,9 +34,11 @@ const DocumentList = () => {
         if (!activeProjectId) {
             setPendingDocType(type);
             setTempSelectedProject('');
+            setIsReadOnly(false);
             setIsProjectSelectModalOpen(true);
         } else {
             setSelectedDocForEdit({ name: `Untitled.${type}` });
+            setIsReadOnly(false);
             setIsEditorModalOpen(true);
         }
     };
@@ -50,12 +52,15 @@ const DocumentList = () => {
         setIsProjectSelectModalOpen(false);
         setTimeout(() => {
             setSelectedDocForEdit({ name: `Untitled.${pendingDocType}` });
+            setIsReadOnly(false);
             setIsEditorModalOpen(true);
         }, 100);
     };
     const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
     const [selectedDocForEdit, setSelectedDocForEdit] = useState(null);
     const [selectedDocForReview, setSelectedDocForReview] = useState(null);
+    const [isReadOnly, setIsReadOnly] = useState(false);
+
 
     // Delete Confirmation State
     const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
@@ -127,6 +132,7 @@ const DocumentList = () => {
     const handleView = (doc) => {
         if (doc.isEditorDocument) {
             setSelectedDocForEdit(doc);
+            setIsReadOnly(true);
             setIsEditorModalOpen(true);
             return;
         }
@@ -253,6 +259,7 @@ const DocumentList = () => {
                                 onEdit={() => {
                                     setSelectedDocForEdit(doc);
                                     if (doc.isEditorDocument) {
+                                        setIsReadOnly(false);
                                         setIsEditorModalOpen(true);
                                     }
                                 }}
@@ -339,9 +346,12 @@ const DocumentList = () => {
                 onClose={() => {
                     setIsEditorModalOpen(false);
                     setSelectedDocForEdit(null);
+                    setIsReadOnly(false); // reset
+                    fetchDocs(); // Refresh list on close
                 }}
                 onSuccess={fetchDocs}
                 document={selectedDocForEdit}
+                readOnly={isReadOnly}
             />
 
             <ReviewRequestModal

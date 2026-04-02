@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
                 if (userData.companies && userData.companies.length > 0) {
                     const savedCompany = localStorage.getItem('activeCompany');
                     const isCurrentValid = userData.companies.some(c => c._id === savedCompany);
-                    
+
                     if (!isCurrentValid || !savedCompany) {
                         const defaultCompanyId = userData.companies[0]._id;
                         setActiveCompany(defaultCompanyId);
