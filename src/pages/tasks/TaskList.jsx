@@ -1,11 +1,28 @@
-import { Box, Heading, Flex, Badge, Button, IconButton, useToast, HStack, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
+import Pagination from '../../components/common/Pagination';
+import {
+    Box,
+    Heading,
+    Flex,
+    Button,
+    IconButton,
+    useToast,
+    HStack,
+    useDisclosure,
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogContent,
+    AlertDialogOverlay,
+    Tooltip,
+} from '@chakra-ui/react';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { getTasks, deleteTask, updateTask } from '../../api/task.api';
-import Loader from '../../components/common/Loader';
+
 import EmptyState from '../../components/feedback/EmptyState';
-import { FiPlus, FiCheckSquare, FiAlertCircle, FiUpload } from 'react-icons/fi';
-import { Link, useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../config/routes.config'; // Need to add TASK routes
+import { FiPlus, FiCheckSquare, FiAlertCircle, FiUpload, FiList, FiGrid } from 'react-icons/fi';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ROUTES } from '../../config/routes.config';
 import CanAccess from '../../components/common/CanAccess';
 import TableActions from '../../components/common/TableActions';
 import DataTable from '../../components/common/DataTable';
@@ -23,6 +40,9 @@ import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
 import BulkUploadModal from '../../components/tasks/BulkUploadModal';
 import useDebounce from '../../hooks/useDebounce';
 import useSocket from '../../hooks/useSocket';
+import KanbanBoard from '../../components/tasks/kanban/KanbanBoard';
+
+
 
 const TaskList = ({ category = 'TASK' }) => {
     const [tasks, setTasks] = useState([]);
@@ -33,6 +53,22 @@ const TaskList = ({ category = 'TASK' }) => {
     const socket = useSocket();
     const navigate = useNavigate();
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // ── View mode (URL-driven) ────────────────────────────────────────────────
+    const viewMode = searchParams.get('view') === 'kanban' ? 'kanban' : 'list';
+
+    const switchView = (mode) => {
+        const newParams = new URLSearchParams(searchParams);
+        if (mode === 'kanban') {
+            newParams.set('view', 'kanban');
+        } else {
+            newParams.delete('view'); // Default is list
+        }
+        setSearchParams(newParams);
+    };
+
+    // ── Filter / search state ────────────────────────────────────────────────
     const [statusOptions, setStatusOptions] = useState([]);
     const [assigneeOptions, setAssigneeOptions] = useState([]);
     const [statusFilter, setStatusFilter] = useState('');
@@ -51,21 +87,22 @@ const TaskList = ({ category = 'TASK' }) => {
         return Array.from(uniqueMap.values());
     }, [statusOptions]);
 
-    // Modal State
+    // ── Modal state ──────────────────────────────────────────────────────────
     const [selectedTask, setSelectedTask] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
-
-    // Delete Confirmation State
-    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
-    const cancelRef = useRef();
-    const [taskToDelete, setTaskToDelete] = useState(null);
 
     const handleViewTask = (task) => {
         setSelectedTask(task);
         setIsModalOpen(true);
     };
 
+    // ── Delete confirmation ──────────────────────────────────────────────────
+    const { isOpen: isAlertOpen, onOpen: onAlertOpen, onClose: onAlertClose } = useDisclosure();
+    const cancelRef = useRef();
+    const [taskToDelete, setTaskToDelete] = useState(null);
+
+    // ── Data fetching ────────────────────────────────────────────────────────
     const fetchOptions = async () => {
         try {
             const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
@@ -114,7 +151,6 @@ const TaskList = ({ category = 'TASK' }) => {
 
             const response = await getTasks(params);
 
-            // Handle both paginated and non-paginated backends safely
             if (response.data && response.pagination) {
                 setTasks(response.data);
                 setTotalItems(response.pagination.totalItems);
@@ -138,24 +174,21 @@ const TaskList = ({ category = 'TASK' }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeProjectId, activeCompany]);
 
-    // Reset to page 1 ONLY when filters or search change
+    // Reset to page 1 when filters/search change
     useEffect(() => {
         setCurrentPage(1);
     }, [statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category, pageSize]);
 
-    // Fetch data whenever ANY of the parameters change
     useEffect(() => {
         fetchTasks();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, pageSize, statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
 
-    // Real-time updates
+    // Real-time updates via socket
     useEffect(() => {
         if (!socket) return;
 
-        const handleTaskChange = () => {
-            fetchTasks();
-        };
+        const handleTaskChange = () => { fetchTasks(); };
 
         socket.on('taskCreated', handleTaskChange);
         socket.on('taskUpdated', handleTaskChange);
@@ -169,10 +202,11 @@ const TaskList = ({ category = 'TASK' }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket, currentPage, pageSize, statusFilter, assigneeFilter, debouncedSearchTerm, activeProjectId, category]);
 
-    // Pagination logic (now reflects actual server data)
+    // ── Pagination ───────────────────────────────────────────────────────────
     const totalPages = Math.ceil(totalItems / pageSize) || 1;
     const paginatedTasks = tasks;
 
+    // ── Handlers ─────────────────────────────────────────────────────────────
     const confirmDelete = (id) => {
         setTaskToDelete(id);
         onAlertOpen();
@@ -180,7 +214,6 @@ const TaskList = ({ category = 'TASK' }) => {
 
     const handleDelete = async () => {
         if (!taskToDelete) return;
-
         try {
             await deleteTask(taskToDelete);
             toast({ title: `${isIssue ? 'Issue' : 'Task'} deleted`, status: 'success' });
@@ -196,10 +229,7 @@ const TaskList = ({ category = 'TASK' }) => {
     const handleUpdateTask = async (id, field, value) => {
         try {
             const updatedTaskData = await updateTask(id, { [field]: value });
-
-            // Update local state with the returned populated task
             setTasks(prev => prev.map(t => (t._id === id ? updatedTaskData : t)));
-
             toast({ title: `${isIssue ? 'Issue' : 'Task'} updated`, status: 'success' });
         } catch (error) {
             toast({
@@ -210,10 +240,9 @@ const TaskList = ({ category = 'TASK' }) => {
         }
     };
 
+    // ── Derived values ────────────────────────────────────────────────────────
     const canUpdate = hasPermission(currentUser, 'tasks-update');
     const isStaff = currentUser?.role?.name === ROLES.STAFF || currentUser?.role === ROLES.STAFF;
-
-    // Dynamic text based on category
     const isIssue = category === 'ISSUE';
     const createRoute = isIssue ? ROUTES.CREATE_ISSUE : ROUTES.CREATE_TASK;
     const editRouteBase = isIssue ? ROUTES.ISSUES : ROUTES.TASKS;
@@ -235,6 +264,7 @@ const TaskList = ({ category = 'TASK' }) => {
         navigate(createRoute);
     };
 
+    // ── List-view columns (unchanged) ─────────────────────────────────────────
     const columns = useMemo(() => {
         const cols = [
             {
@@ -256,10 +286,10 @@ const TaskList = ({ category = 'TASK' }) => {
                 header: 'Status',
                 accessor: 'taskStatus',
                 render: (task) => {
-                    const projectStatuses = !activeProjectId && task.project 
+                    const projectStatuses = !activeProjectId && task.project
                         ? statusOptions.filter(opt => opt.project === (task.project._id || task.project))
                         : statusOptions;
-                    
+
                     return (
                         <TableSelect
                             value={task.taskStatus?._id || ''}
@@ -280,7 +310,6 @@ const TaskList = ({ category = 'TASK' }) => {
                 render: (task) => {
                     let currentOptions = assigneeOptions;
 
-                    // If viewing all projects, derive options from the task's populated project members
                     if (!activeProjectId && task.project && Array.isArray(task.project.members)) {
                         const filteredMembers = task.project.members.filter(u => {
                             const roleName = u.role?.name || u.role;
@@ -289,7 +318,6 @@ const TaskList = ({ category = 'TASK' }) => {
                         currentOptions = filteredMembers.map(u => ({ label: u.name, value: u._id }));
                     }
 
-                    // Make sure the current assignee is always included in the options
                     const optionsWithCurrent = [...currentOptions];
                     if (task.assignee && !optionsWithCurrent.some(opt => opt.value === task.assignee._id)) {
                         optionsWithCurrent.push({ label: task.assignee.name, value: task.assignee._id });
@@ -326,20 +354,53 @@ const TaskList = ({ category = 'TASK' }) => {
         return cols;
     }, [statusOptions, assigneeOptions, canUpdate, isStaff, currentUser, editRouteBase]);
 
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <Box>
+            {/* ── Header ──────────────────────────────────────────────────── */}
             <Flex justify="space-between" align="center" mb={6}>
                 <Heading size="lg">{titleText}</Heading>
-                <HStack spacing={4}>
+                <HStack spacing={3}>
+                    {/* View toggle */}
+                    <HStack
+                        spacing={0}
+                        bg="gray.100"
+                        borderRadius="lg"
+                        p={1}
+                    >
+                        <Tooltip label="List View" hasArrow placement="top">
+                            <IconButton
+                                icon={<FiList />}
+                                aria-label="List View"
+                                size="sm"
+                                variant={viewMode === 'list' ? 'solid' : 'ghost'}
+                                colorScheme={viewMode === 'list' ? 'brand' : 'gray'}
+                                onClick={() => switchView('list')}
+                                borderRadius="md"
+                            />
+                        </Tooltip>
+                        <Tooltip label="Kanban View" hasArrow placement="top">
+                            <IconButton
+                                icon={<FiGrid />}
+                                aria-label="Kanban View"
+                                size="sm"
+                                variant={viewMode === 'kanban' ? 'solid' : 'ghost'}
+                                colorScheme={viewMode === 'kanban' ? 'brand' : 'gray'}
+                                onClick={() => switchView('kanban')}
+                                borderRadius="md"
+                            />
+                        </Tooltip>
+                    </HStack>
+
                     <CanAccess permission="tasks-create">
                         <Button leftIcon={<FiUpload />} variant="outline" onClick={() => setIsBulkUploadModalOpen(true)}>
                             Bulk Upload
                         </Button>
                     </CanAccess>
                     <CanAccess permission="tasks-create">
-                        <Button 
-                            leftIcon={<FiPlus />} 
-                            colorScheme="brand" 
+                        <Button
+                            leftIcon={<FiPlus />}
+                            colorScheme="brand"
                             onClick={handleCreateClick}
                         >
                             {createText}
@@ -348,6 +409,7 @@ const TaskList = ({ category = 'TASK' }) => {
                 </HStack>
             </Flex>
 
+            {/* ── Filters / Search ─────────────────────────────────────────── */}
             <Flex mb={4} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
@@ -372,30 +434,76 @@ const TaskList = ({ category = 'TASK' }) => {
                 )}
             </Flex>
 
-            {loading ? (
-                <DataTable
-                    columns={columns}
-                    data={[]}
-                    isLoading={true}
-                />
-            ) : tasks.length === 0 ? (
-                <EmptyState title={`No ${titleText}`} description={`Create a ${itemName} to get started`} icon={isIssue ? FiAlertCircle : FiCheckSquare} />
+            {/* ── Main content: List or Kanban ─────────────────────────────── */}
+            {viewMode === 'list' ? (
+                <>
+                    {loading ? (
+                        <DataTable columns={columns} data={[]} isLoading={true} />
+                    ) : tasks.length === 0 ? (
+                        <EmptyState
+                            title={`No ${titleText}`}
+                            description={`Create a ${itemName} to get started`}
+                            icon={isIssue ? FiAlertCircle : FiCheckSquare}
+                        />
+                    ) : (
+                        <DataTable
+                            columns={columns}
+                            data={paginatedTasks}
+                            isLoading={loading}
+                            pagination={{
+                                currentPage,
+                                totalPages,
+                                onPageChange: setCurrentPage,
+                                pageSize,
+                                onPageSizeChange: setPageSize,
+                                totalItems
+                            }}
+                        />
+                    )}
+                </>
             ) : (
-                <DataTable
-                    columns={columns}
-                    data={paginatedTasks}
-                    isLoading={loading}
-                    pagination={{
-                        currentPage,
-                        totalPages,
-                        onPageChange: setCurrentPage,
-                        pageSize,
-                        onPageSizeChange: setPageSize,
-                        totalItems
-                    }}
-                />
+                /* Kanban view — passes all shared state/handlers down */
+                <>
+                    {!loading && tasks.length === 0 ? (
+                        <EmptyState
+                            title={`No ${titleText}`}
+                            description={`Create a ${itemName} to get started`}
+                            icon={isIssue ? FiAlertCircle : FiCheckSquare}
+                        />
+                    ) : (
+                        <KanbanBoard
+                            tasks={paginatedTasks}
+                            statusOptions={statusOptions}
+                            assigneeOptions={assigneeOptions}
+                            isLoading={loading}
+                            canUpdate={canUpdate}
+                            isStaff={isStaff}
+                            currentUser={currentUser}
+                            isIssue={isIssue}
+                            editRouteBase={editRouteBase}
+                            onViewTask={handleViewTask}
+                            onUpdateTask={handleUpdateTask}
+                            onDeleteTask={confirmDelete}
+                            activeProjectId={activeProjectId}
+                        />
+                    )}
+                    {/* Pagination in Kanban view */}
+                    {!loading && tasks.length > 0 && (
+                        <Box mt={4} bg="white" shadow="md" borderRadius="lg" p={3}>
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                pageSize={pageSize}
+                                onPageSizeChange={setPageSize}
+                                totalItems={totalItems}
+                            />
+                        </Box>
+                    )}
+                </>
             )}
 
+            {/* ── Modals ───────────────────────────────────────────────────── */}
             <TaskDetailsModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
