@@ -21,7 +21,7 @@ import { getProjectMembers } from '../../api/project.api';
 import useAuth from '../../hooks/useAuth';
 import Select from 'react-select';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
-import DecoupledEditor from '@ckeditor/ckeditor5-build-decoupled-document';
+import { DecoupledEditor } from '@ckeditor/ckeditor5-editor-decoupled';
 import html2pdf from 'html2pdf.js';
 
 
