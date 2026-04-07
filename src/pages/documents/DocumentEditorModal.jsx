@@ -21,7 +21,46 @@ import { getProjectMembers } from '../../api/project.api';
 import useAuth from '../../hooks/useAuth';
 import Select from 'react-select';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
-import { DecoupledEditor } from '@ckeditor/ckeditor5-editor-decoupled';
+import {
+    DecoupledEditor,
+    AccessibilityHelp,
+    Alignment,
+    AutoLink,
+    Autosave,
+    BlockQuote,
+    Bold,
+    CloudServices,
+    Essentials,
+    FontSize,
+    FontColor,
+    FontBackgroundColor,
+    Heading as CKEditorHeading,
+    Image as CKEditorImage,
+    ImageCaption,
+    ImageStyle,
+    ImageToolbar,
+    ImageUpload,
+    Indent,
+    IndentBlock,
+    Italic,
+    Link as CKEditorLink,
+    List,
+    ListProperties,
+    Paragraph,
+    SelectAll,
+    Strikethrough,
+    Subscript,
+    Superscript,
+    Table,
+    TableCaption,
+    TableProperties,
+    TableToolbar,
+    TextTransformation,
+    TodoList,
+    Underline,
+    Undo
+} from 'ckeditor5';
+import 'ckeditor5/ckeditor5.css';
 import html2pdf from 'html2pdf.js';
 
 
@@ -165,6 +204,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
 
     const isDocxRef = useRef(false);
     const editorRef = useRef(null);
+    const toolbarWrapperRef = useRef(null);
     const isPaginatingRef = useRef(false); // prevent infinite loop
     const paginateTimer = useRef(null);
 
@@ -632,6 +672,49 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
         }
     };
 
+    // ── Export TXT ────────────────────────────────────────────────────────────
+    const handleExportTxt = () => {
+        if (!content) {
+            toast({ title: 'Document is empty', status: 'warning' });
+            return;
+        }
+
+        // Basic HTML to plain text conversion
+        // 1. Replace block elements with newlines
+        let text = content
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/h[1-6]>/gi, '\n\n')
+            .replace(/<li>/gi, '• ')
+            .replace(/<\/li>/gi, '\n');
+
+        // 2. Strip all remaining HTML tags
+        text = text.replace(/<[^>]*>/g, '');
+
+        // 3. Decode common HTML entities
+        const entities = {
+            '&nbsp;': ' ',
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#39;': "'"
+        };
+        Object.entries(entities).forEach(([entity, val]) => {
+            text = text.replace(new RegExp(entity, 'g'), val);
+        });
+
+        const blob = new Blob([text.trim()], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = name || 'document.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        toast({ title: 'Text file downloaded', status: 'success' });
+    };
+
     // ── Close ─────────────────────────────────────────────────────────────────
     const handleClose = async () => {
         if (savingStatus === 'unsaved' && !readOnly) {
@@ -670,7 +753,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
 
     // ── CKEditor onReady ──────────────────────────────────────────────────────
     const handleEditorReady = (editor) => {
-        editorRef.current = editor; // ✅ ADD THIS
+        editorRef.current = editor;
 
         // Ensure pageBreak exists (fallback if build doesn't include plugin)
         if (!editor.model.schema.isRegistered('pageBreak')) {
@@ -706,11 +789,13 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
         editor.model.schema.extend('pageBreak', { allowAttributes: ['data-auto'] });
         editor.conversion.attributeToAttribute({ model: 'data-auto', view: 'data-auto' });
 
-        // 1. Move toolbar (IMPORTANT - also re-add this)
-        const toolbar = editor.ui.view.toolbar.element;
-        const wrapper = window.document.getElementById('ck-toolbar-wrapper');
+        // 1. Mark as ready
+        editorRef.current = editor;
 
-        if (wrapper) {
+        // 2. Initial Toolbar Movement (Robustness)
+        const toolbar = editor.ui.view.toolbar.element;
+        const wrapper = toolbarWrapperRef.current;
+        if (wrapper && toolbar && !wrapper.contains(toolbar)) {
             wrapper.innerHTML = '';
             wrapper.appendChild(toolbar);
         }
@@ -802,8 +887,16 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
             editor.enableReadOnlyMode('view');
         } else {
             editor.disableReadOnlyMode('view');
+            
+            // Re-ensure toolbar is in place when switching to edit mode
+            const toolbar = editor.ui.view.toolbar.element;
+            const wrapper = toolbarWrapperRef.current;
+            if (wrapper && toolbar && !wrapper.contains(toolbar)) {
+                wrapper.innerHTML = '';
+                wrapper.appendChild(toolbar);
+            }
         }
-    }, [canEdit]);
+    }, [canEdit, isOpen]);
 
     const autoPaginate = useCallback(() => {
         if (!isDocxRef.current) return;
@@ -950,6 +1043,45 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
         : false;
 
     const editorConfig = {
+        licenseKey: 'GPL',
+        plugins: [
+            AccessibilityHelp,
+            Alignment,
+            AutoLink,
+            Autosave,
+            BlockQuote,
+            Bold,
+            CloudServices,
+            Essentials,
+            FontSize,
+            FontColor,
+            FontBackgroundColor,
+            CKEditorHeading,
+            CKEditorImage,
+            ImageCaption,
+            ImageStyle,
+            ImageToolbar,
+            ImageUpload,
+            Indent,
+            IndentBlock,
+            Italic,
+            CKEditorLink,
+            List,
+            ListProperties,
+            Paragraph,
+            SelectAll,
+            Strikethrough,
+            Subscript,
+            Superscript,
+            Table,
+            TableCaption,
+            TableProperties,
+            TableToolbar,
+            TextTransformation,
+            TodoList,
+            Underline,
+            Undo
+        ],
         placeholder: 'Start typing your document here...',
         toolbar: {
             items: [
@@ -1096,6 +1228,17 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
                                         Export PDF
                                     </Button>
                                 )}
+                                {!isDocx && (
+                                    <Button
+                                        leftIcon={<FiDownload />}
+                                        colorScheme="blue"
+                                        variant="outline"
+                                        onClick={handleExportTxt}
+                                        size="sm"
+                                    >
+                                        Download TXT
+                                    </Button>
+                                )}
                                 {!currentUser?.autosavePreference && canEdit && (
                                     <Button
                                         leftIcon={<FiSave />}
@@ -1140,7 +1283,7 @@ const DocumentEditorModal = ({ isOpen, onClose, onSuccess, document = null, read
                  */}
                 {canEdit && (
                     <Box
-                        id="ck-toolbar-wrapper"
+                        ref={toolbarWrapperRef}
                         flexShrink={0}
                         borderBottomWidth="1px"
                         borderColor="gray.200"

@@ -23,10 +23,13 @@ import EditProject from './pages/projects/EditProject';
 import TeamList from './pages/team/TeamList';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import MainLayout from './components/Layout/MainLayout';
+import SubscriptionList from './pages/subscriptions/SubscriptionList';
+import SubscriptionForm from './pages/subscriptions/SubscriptionForm';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import DocumentPage from './pages/documents/DocumentPage';
 import CompanySettings from './pages/companies/CompanySettings';
+import CompanySubscription from './pages/company/CompanySubscription';
 
 function App() {
   return (
@@ -81,6 +84,12 @@ function App() {
 
           {/* Company Routes */}
           <Route path="/settings/company" element={<CompanySettings />} />
+          <Route path="/settings/subscription" element={<CompanySubscription />} />
+
+          {/* Subscription Routes */}
+          <Route path="/subscriptions" element={<SubscriptionList />} />
+          <Route path="/subscriptions/create" element={<SubscriptionForm />} />
+          <Route path="/subscriptions/:id/edit" element={<SubscriptionForm />} />
 
           {/* Redirect root URL to dashboard, which redirects to login if not authenticated */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

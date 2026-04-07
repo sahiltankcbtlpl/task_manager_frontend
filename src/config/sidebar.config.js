@@ -1,7 +1,8 @@
-import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder, FiAlertCircle, FiFileText } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder, FiAlertCircle, FiFileText, FiPackage } from 'react-icons/fi';
 import { ROUTES } from './routes.config';
 
 export const SIDEBAR_ITEMS = [
+    // ... items preserved
     {
         label: 'Dashboard',
         icon: FiHome,
@@ -63,9 +64,21 @@ export const SIDEBAR_ITEMS = [
         ownerOnly: true, // Specifically limited to Company Owner
     },
     {
+        label: 'My Subscription',
+        icon: FiPackage,
+        to: '/settings/subscription',
+        ownerOnly: true,
+    },
+    {
         label: 'Permissions',
         icon: FiLock,
         to: ROUTES.PERMISSIONS,
         permission: 'superadmin-only', // Only Super Admin should see this
+    },
+    {
+        label: 'Subscriptions',
+        icon: FiBriefcase,
+        to: ROUTES.SUBSCRIPTIONS,
+        superAdminOnly: true,
     },
 ];

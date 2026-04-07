@@ -121,7 +121,8 @@ const UploadDocumentModal = ({ isOpen, onClose, onSuccess }) => {
             toast({
                 title: 'Upload failed',
                 description: error.response?.data?.message || 'Something went wrong',
-                status: 'error'
+                duration: 2000,
+                isClosable: true,
             });
         } finally {
             setLoading(false);

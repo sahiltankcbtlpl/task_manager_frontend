@@ -25,5 +25,8 @@ export const ROUTES = {
     TEAM: '/team',
     DOCUMENTS: '/documents',
     COMPANY_SETTINGS: '/settings/company',
+    SUBSCRIPTIONS: '/subscriptions',
+    CREATE_SUBSCRIPTION: '/subscriptions/create',
+    EDIT_SUBSCRIPTION: '/subscriptions/:id/edit',
     NOT_FOUND: '*',
 };

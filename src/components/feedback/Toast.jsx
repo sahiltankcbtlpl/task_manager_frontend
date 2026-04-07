@@ -21,7 +21,7 @@ const useCustomToast = () => {
             title,
             description,
             status,
-            duration: 3000,
+            duration: 2000,
             isClosable: true,
             position: 'top-right',
         });

@@ -5,7 +5,6 @@ import theme from "../../theme/chakra.theme";
 import CanAccess from "../common/CanAccess";
 import { SIDEBAR_ITEMS } from "../../config/sidebar.config";
 import PropTypes from "prop-types";
-import { color } from "framer-motion";
 import useAuth from "../../hooks/useAuth";
 
 const Sidebar = ({ isOpen, onClose, ...props }) => {
@@ -19,9 +18,11 @@ const Sidebar = ({ isOpen, onClose, ...props }) => {
             borderColor="gray.200"
             pos="fixed"
             zIndex="sticky"
+            display="flex"
+            flexDirection="column"
             {...props}
         >
-            <VStack spacing={4} align="stretch" p={4}>
+            <VStack spacing={4} align="stretch" p={4} flex={1}>
                 <Text fontSize="xl" fontWeight="bold" color="brand.600" mb={6} as={NavLink} to="/dashboard" _hover={{ textDecoration: 'none' }}>
                     Task Manager
                 </Text>
@@ -29,6 +30,7 @@ const Sidebar = ({ isOpen, onClose, ...props }) => {
                 {SIDEBAR_ITEMS.map((item) => {
                     const LinkContent = (
                         <NavLink
+                            key={item.to}
                             to={item.to}
                             style={({ isActive }) => ({
                                 color: isActive ? "#3182ce" : "inherit",
@@ -50,7 +52,13 @@ const Sidebar = ({ isOpen, onClose, ...props }) => {
                     if (item.ownerOnly) {
                         const isOwner = user?.role === 'Company Owner' || user?.role?.name === 'Company Owner';
                         if (!isOwner) return null;
-                        return <div key={item.to}>{LinkContent}</div>;
+                        return LinkContent;
+                    }
+
+                    if (item.superAdminOnly) {
+                        const isSuperAdmin = user?.role === 'Super Admin' || user?.role?.name === 'Super Admin';
+                        if (!isSuperAdmin) return null;
+                        return LinkContent;
                     }
 
                     if (item.permission) {
@@ -61,9 +69,10 @@ const Sidebar = ({ isOpen, onClose, ...props }) => {
                         );
                     }
 
-                    return <div key={item.to}>{LinkContent}</div>;
+                    return LinkContent;
                 })}
             </VStack>
+
         </Box>
     );
 };

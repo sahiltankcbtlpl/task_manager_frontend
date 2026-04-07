@@ -1,15 +1,3 @@
-// import axios from 'axios';
-
-// const api = axios.create({
-//     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api', // Default local API
-//     withCredentials: true, // Important for HTTP-only cookies
-//     headers: {
-//         'Content-Type': 'application/json',
-//     },
-// });
-
-// export default api;
-
 import axios from 'axios';
 
 // Dynamically determine the API base URL based on where the frontend is being accessed from
@@ -46,6 +34,18 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor to handle subscription limit errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403 && error.response?.data?.limitReached) {
+      // Trigger the global plan selection modal
+      window.dispatchEvent(new CustomEvent('open-subscription-modal'));
+    }
     return Promise.reject(error);
   }
 );

@@ -14,3 +14,9 @@ export const updateCompany = async (companyId, formData) => {
     });
     return response.data;
 };
+
+export const assignPlanToCompany = async (companyId, planData) => {
+    // planData should be { subscriptionId, duration }
+    const response = await api.put(`/companies/${companyId}/subscription`, planData);
+    return response.data;
+};
