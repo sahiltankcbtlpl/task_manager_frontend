@@ -275,9 +275,12 @@ const DocumentList = () => {
     }, [currentUser, activeProjectId]);
 
     return (
-        <Box>
-            <Flex justify="space-between" align="center" mb={6}>
-                <Heading size="lg">Documents</Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">Documents</Heading>
+                    <Text color="gray.500" mt={1}>Manage and organize your company documents</Text>
+                </Box>
                 <Flex gap={2}>
                     <Menu>
                         <MenuButton as={Button} leftIcon={<FiEdit2 />} rightIcon={<FiChevronDown />} colorScheme="brand" variant="outline">
@@ -298,7 +301,7 @@ const DocumentList = () => {
                 </Flex>
             </Flex>
 
-            <Flex mb={4} gap={4} wrap="wrap">
+            <Flex mb={6} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
                         placeholder="Search documents..."

@@ -106,9 +106,9 @@ const ProjectList = () => {
                     <Wrap spacing={2}>
                         {project.members.map(m => (
                             <WrapItem key={m._id || m}>
-                                <Tag size="md" borderRadius="full" variant="subtle" colorScheme="blue">
+                                <Tag size="md" borderRadius="full" px={3} variant="subtle" colorScheme="brand">
                                     <Avatar name={m.name} size="xs" ml={-1} mr={2} />
-                                    <TagLabel>{m.name}</TagLabel>
+                                    <TagLabel fontWeight="medium">{m.name}</TagLabel>
                                 </Tag>
                             </WrapItem>
                         ))}
@@ -147,17 +147,29 @@ const ProjectList = () => {
     const paginatedProjects = projects.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     return (
-        <Box>
-            <Flex justify="space-between" align="center" mb={6}>
-                <Heading size="lg">Projects</Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">Projects</Heading>
+                    <Text color="gray.500" mt={1}>Manage and track your company projects</Text>
+                </Box>
                 <CanAccess permission="projects-create">
                     <Link to={ROUTES.CREATE_PROJECT}>
-                        <Button leftIcon={<FiPlus />} colorScheme="brand">Create Project</Button>
+                        <Button 
+                            leftIcon={<FiPlus />} 
+                            colorScheme="brand" 
+                            size="lg" 
+                            shadow="md"
+                            _hover={{ shadow: 'lg', transform: 'translateY(-1px)' }}
+                            transition="all 0.2s"
+                        >
+                            Create Project
+                        </Button>
                     </Link>
                 </CanAccess>
             </Flex>
 
-            <Flex mb={4} gap={4} wrap="wrap">
+            <Flex mb={6} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
                         placeholder="Search projects..."

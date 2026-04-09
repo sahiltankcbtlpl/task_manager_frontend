@@ -1,4 +1,4 @@
-import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, useToast } from '@chakra-ui/react';
+import { Box, Heading, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, useToast, Text } from '@chakra-ui/react';
 import EmptyState from '../../components/feedback/EmptyState';
 import { FiActivity } from 'react-icons/fi';
 import { useEffect, useState } from 'react';
@@ -82,8 +82,11 @@ const Dashboard = () => {
     if (loading) return <Loader type="card" />;
 
     return (
-        <Box>
-            <Heading mb={6} size="lg">Dashboard </Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Box mb={8}>
+                <Heading size="lg" color="gray.800">Dashboard</Heading>
+                <Text color="gray.500" mt={1}>Overview of your tasks, progress, and recent activities</Text>
+            </Box>
 
             <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mb={8}>
                 {stats.map((stat, index) => (

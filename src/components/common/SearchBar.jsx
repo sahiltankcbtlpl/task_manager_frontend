@@ -6,8 +6,8 @@ import PropTypes from 'prop-types';
 const SearchBar = ({ placeholder, value, onChange, ...props }) => {
     return (
         <InputGroup maxW="300px" {...props}>
-            <InputLeftElement pointerEvents="none">
-                <FiSearch color="gray.300" />
+            <InputLeftElement pointerEvents="none" h="full">
+                <FiSearch color="gray.400" />
             </InputLeftElement>
             <Input
                 type="text"
@@ -15,8 +15,12 @@ const SearchBar = ({ placeholder, value, onChange, ...props }) => {
                 value={value}
                 onChange={onChange}
                 bg="white"
-                shadow="sm"
-                borderRadius="md"
+                h="45px"
+                shadow="soft"
+                borderRadius="xl"
+                border="1px"
+                borderColor="gray.100"
+                _placeholder={{ color: 'gray.400', fontSize: 'sm' }}
                 _focus={{ borderColor: 'brand.500', shadow: 'md' }}
             />
         </InputGroup>

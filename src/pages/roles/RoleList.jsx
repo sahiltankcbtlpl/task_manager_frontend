@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     Heading,
+    Text,
+    Flex,
     Button,
     IconButton,
     HStack,
@@ -143,22 +145,29 @@ const RoleList = () => {
 
 
     return (
-        <Box>
-            <HStack justifyContent="space-between" mb={6}>
-                <Heading size="lg">Roles</Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">Roles</Heading>
+                    <Text color="gray.500" mt={1}>Define and manage user roles and organizational permissions</Text>
+                </Box>
                 <CanAccess permission="roles-create">
-                    <Button
-                        leftIcon={<FiPlus />}
-                        colorScheme="brand"
-                        as={Link}
-                        to={ROUTES.CREATE_ROLE}
-                    >
-                        Create Role
-                    </Button>
+                    <Link to={ROUTES.CREATE_ROLE}>
+                        <Button 
+                            leftIcon={<FiPlus />} 
+                            colorScheme="brand" 
+                            size="lg" 
+                            shadow="md"
+                            _hover={{ shadow: 'lg', transform: 'translateY(-1px)' }}
+                            transition="all 0.2s"
+                        >
+                            Create Role
+                        </Button>
+                    </Link>
                 </CanAccess>
-            </HStack>
+            </Flex>
 
-            <Box mb={4}>
+            <Box mb={6}>
                 <SearchBar
                     placeholder="Search roles..."
                     value={searchTerm}

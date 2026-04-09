@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     Heading,
+    Text,
     Button,
     IconButton,
     HStack,
@@ -185,22 +186,31 @@ const StaffList = () => {
     }
 
     return (
-        <Box>
-            <HStack justify="space-between" mb={6}>
-                <Heading size="lg">User Management</Heading>
-                <CanAccess permission="users-create">
-                    <Button
-                        as={Link}
-                        to={ROUTES.CREATE_STAFF}
-                        leftIcon={<FiPlus />}
-                        colorScheme="brand"
-                    >
-                        Create User
-                    </Button>
-                </CanAccess>
-            </HStack>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">User Management</Heading>
+                    <Text color="gray.500" mt={1}>Manage and monitor your team member access</Text>
+                </Box>
+                <Box>
+                    <CanAccess permission="users-create">
+                        <Link to={ROUTES.CREATE_STAFF}>
+                            <Button
+                                leftIcon={<FiPlus />}
+                                colorScheme="brand"
+                                size="lg"
+                                shadow="md"
+                                _hover={{ shadow: 'lg', transform: 'translateY(-1px)' }}
+                                transition="all 0.2s"
+                            >
+                                Create User
+                            </Button>
+                        </Link>
+                    </CanAccess>
+                </Box>
+            </Flex>
 
-            <Flex mb={4} gap={4} wrap="wrap">
+            <Flex mb={6} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
                         placeholder="Search users..."

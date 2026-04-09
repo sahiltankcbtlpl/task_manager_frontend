@@ -93,17 +93,17 @@ const TeamList = () => {
     ], []);
 
     return (
-        <Box>
-            <Flex justify="space-between" align="center" mb={6}>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
                 <Box>
-                    <Heading size="lg">Team Overview</Heading>
+                    <Heading size="lg" color="gray.800">Team Overview</Heading>
                     <Text color="gray.500" mt={1}>
                         Members of {activeProjectId ? 'selected project' : 'all projects'}
                     </Text>
                 </Box>
             </Flex>
 
-            <Flex mb={4} gap={4} wrap="wrap">
+            <Flex mb={6} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
                         placeholder="Search members..."
@@ -120,11 +120,11 @@ const TeamList = () => {
             ) : (
                 <Box bg="white" borderRadius="md" shadow="sm" overflow="hidden">
                     {/* Header Row */}
-                    <Flex bg="gray.50" px={6} py={4} borderBottomWidth={1} borderColor="gray.200">
-                        <Text flex="1" fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wider" textTransform="uppercase">
+                    <Flex bg="brand.50" px={6} py={4} borderBottomWidth={1} borderColor="whiteAlpha.100">
+                        <Text flex="1" fontSize="xs" fontWeight="bold" color="brand.700" letterSpacing="wider" textTransform="uppercase">
                             Project Details
                         </Text>
-                        <Text flex="1" fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wider" textTransform="uppercase">
+                        <Text flex="1" fontSize="xs" fontWeight="bold" color="brand.700" letterSpacing="wider" textTransform="uppercase">
                             Assigned Team
                         </Text>
                     </Flex>
@@ -153,9 +153,9 @@ const TeamList = () => {
                                     {data.members.length > 0 ? (
                                         data.members.map(member => (
                                             <WrapItem key={member._id}>
-                                                <Tag size="md" borderRadius="full" variant="subtle" colorScheme="blue">
+                                                <Tag size="md" borderRadius="full" px={3} variant="subtle" colorScheme="brand">
                                                     <Avatar name={member.name} size="xs" ml={-1} mr={2} />
-                                                    <TagLabel textTransform="uppercase">{member.name}</TagLabel>
+                                                    <TagLabel fontWeight="medium" textTransform="uppercase">{member.name}</TagLabel>
                                                 </Tag>
                                             </WrapItem>
                                         ))

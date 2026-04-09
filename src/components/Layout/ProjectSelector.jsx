@@ -51,21 +51,24 @@ const ProjectSelector = () => {
               align="center"
               cursor="pointer"
               px={3}
-              py={2}
-              borderRadius="md"
-              bg={isOpen ? 'blue.50' : 'transparent'}
-              _hover={{ bg: 'gray.50' }}
-              transition="all 0.2s"
+              py={1.5}
+              borderRadius="xl"
+              bg={isOpen ? 'brand.50' : 'transparent'}
+              _hover={{ bg: 'brand.50', transform: 'translateY(-1px)' }}
+              transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+              border="1px solid"
+              borderColor={isOpen ? 'brand.100' : 'transparent'}
             >
               {/* Icon */}
               <Flex
                 align="center"
                 justify="center"
-                bg="blue.50"
-                color="blue.500"
+                bg="brand.50"
+                color="brand.600"
                 p={2}
-                borderRadius="md"
+                borderRadius="lg"
                 mr={3}
+                shadow="sm"
               >
                 <Icon as={FiFolder} boxSize={4} />
               </Flex>
@@ -77,7 +80,7 @@ const ProjectSelector = () => {
                     as="span"
                     fontWeight="bold"
                     fontSize="sm"
-                    color="blue.600"
+                    color="brand.700"
                   >
                     {loading
                       ? 'Loading'
@@ -85,7 +88,7 @@ const ProjectSelector = () => {
                   </Text>
 
                   {loading && (
-                    <Spinner size="xs" ml={2} color="blue.500" />
+                    <Spinner size="xs" ml={2} color="brand.500" />
                   )}
                 </Flex>
               </Box>
@@ -94,7 +97,7 @@ const ProjectSelector = () => {
               <Icon
                 as={isOpen ? FiChevronUp : FiChevronDown}
                 boxSize={4}
-                color="blue.500"
+                color="brand.400"
               />
             </Flex>
           </PopoverTrigger>
@@ -103,17 +106,18 @@ const ProjectSelector = () => {
           <PopoverContent
             w="320px"
             border="none"
-            borderRadius="xl"
-            boxShadow="xl"
+            borderRadius="2xl"
+            boxShadow="0 10px 40px rgba(0,0,0,0.1)"
             overflow="hidden"
+            _focus={{ outline: 'none' }}
           >
-            <PopoverHeader pt={4} pb={2} px={4} borderBottom="none">
+            <PopoverHeader pt={5} pb={2} px={4} borderBottom="none">
               <Text
                 fontSize="xs"
-                fontWeight="bold"
-                color="gray.500"
+                fontWeight="extrabold"
+                color="brand.600"
                 textTransform="uppercase"
-                letterSpacing="wide"
+                letterSpacing="widest"
               >
                 Available Projects
               </Text>
@@ -121,8 +125,8 @@ const ProjectSelector = () => {
 
             <PopoverBody p={0} maxH="300px" overflowY="auto">
               {loading && (
-                <Flex justify="center" p={4}>
-                  <Spinner size="sm" color="blue.500" />
+                <Flex justify="center" p={6}>
+                  <Spinner size="md" thickness="3px" color="brand.500" />
                 </Flex>
               )}
 
@@ -138,16 +142,17 @@ const ProjectSelector = () => {
                     px={4}
                     py={3}
                     cursor="pointer"
-                    bg={!activeProjectId ? 'blue.50' : 'transparent'}
+                    bg={!activeProjectId ? 'brand.50' : 'transparent'}
                     borderLeft="4px solid"
-                    borderColor={!activeProjectId ? 'blue.500' : 'transparent'}
-                    _hover={{ bg: !activeProjectId ? 'blue.50' : 'gray.50' }}
+                    borderColor={!activeProjectId ? 'brand.500' : 'transparent'}
+                    _hover={{ bg: 'brand.50' }}
                     onClick={() => handleSelectProject(null, onClose)}
+                    transition="all 0.2s"
                   >
                     <Text
                       fontWeight="bold"
                       fontSize="sm"
-                      color={!activeProjectId ? 'blue.600' : 'gray.800'}
+                      color={!activeProjectId ? 'brand.700' : 'gray.700'}
                     >
                       All Projects
                     </Text>
@@ -162,23 +167,24 @@ const ProjectSelector = () => {
                         px={4}
                         py={3}
                         cursor="pointer"
-                        bg={isActive ? 'blue.50' : 'transparent'}
+                        bg={isActive ? 'brand.50' : 'transparent'}
                         borderLeft="4px solid"
-                        borderColor={isActive ? 'blue.500' : 'transparent'}
-                        _hover={{ bg: isActive ? 'blue.50' : 'gray.50' }}
+                        borderColor={isActive ? 'brand.500' : 'transparent'}
+                        _hover={{ bg: 'brand.50' }}
                         onClick={() =>
                           handleSelectProject(project._id, onClose)
                         }
+                        transition="all 0.2s"
                       >
                         <Text
                           fontWeight="bold"
                           fontSize="sm"
-                          color={isActive ? 'blue.600' : 'gray.800'}
+                          color={isActive ? 'brand.700' : 'gray.700'}
                         >
                           {project.title}
                         </Text>
 
-                        <Text fontSize="xs" color="gray.400" noOfLines={1}>
+                        <Text fontSize="xs" color="gray.500" noOfLines={1} mt={0.5}>
                           {project.description || 'No description available'}
                         </Text>
                       </Box>

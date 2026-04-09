@@ -12,6 +12,7 @@ const MainLayout = () => {
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { user, activeCompany } = useAuth();
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     useEffect(() => {
         const handleOpenModal = () => setIsPlanModalOpen(true);
@@ -46,12 +47,16 @@ const MainLayout = () => {
         };
     }, [activeCompany, user]);
 
+    const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+
     return (
         <Box minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
             {/* Sidebar for Desktop */}
             <Sidebar
                 onClose={() => onClose}
                 display={{ base: 'none', md: 'block' }}
+                isCollapsed={isCollapsed}
+                onToggle={toggleSidebar}
             />
 
             {/* Sidebar for Mobile */}
@@ -70,10 +75,15 @@ const MainLayout = () => {
             </Drawer>
 
             {/* Content Wrapper */}
-            <Box ml={{ base: 0, md: '250px' }} transition=".3s ease">
+            <Box 
+                ml={{ base: 0, md: isCollapsed ? '80px' : '250px' }} 
+                transition=".3s ease"
+                bg="gray.50"
+                minH="100vh"
+            >
                 <Header onOpen={onOpen} onOpenSidebar={onOpen} />
 
-                <Box p="4">
+                <Box p={{ base: 4, md: 8 }} maxW="1500px" mx="auto">
                     <Outlet />
                 </Box>
             </Box>

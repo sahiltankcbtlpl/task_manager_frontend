@@ -9,12 +9,21 @@ const TableFilter = ({ placeholder, options, value, onChange, ...props }) => {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             bg="white"
-            borderColor="gray.200"
-            _hover={{ borderColor: 'gray.300' }}
-            _focus={{ borderColor: 'brand.500', boxShadow: 'none' }}
+            borderColor="gray.100"
+            borderRadius="xl"
+            shadow="sm"
+            fontWeight="medium"
+            _hover={{ borderColor: 'brand.200', shadow: 'md' }}
+            _focus={{ 
+                borderColor: 'brand.500', 
+                boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+                bg: 'white'
+            }}
+            transition="all 0.2s"
             width="auto"
-            minW="150px"
+            minW="180px"
             size="md"
+            cursor="pointer"
             {...props}
         >
             {options.map((option) => (

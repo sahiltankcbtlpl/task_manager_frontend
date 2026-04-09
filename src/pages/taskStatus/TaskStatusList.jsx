@@ -1,4 +1,4 @@
-import { Box, Heading, Flex, Button, useToast, Badge, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay } from '@chakra-ui/react';
+import { Box, Heading, Flex, Button, useToast, Badge, useDisclosure, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, Text } from '@chakra-ui/react';
 import { useEffect, useState, useRef } from 'react';
 import { getTaskStatuses, deleteTaskStatus } from '../../api/taskStatus.api';
 import Loader from '../../components/common/Loader';
@@ -132,17 +132,29 @@ const TaskStatusList = () => {
     }
 
     return (
-        <Box>
-            <Flex justify="space-between" align="center" mb={6}>
-                <Heading size="lg">Task Status</Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">Task Status</Heading>
+                    <Text color="gray.500" mt={1}>Define and manage statuses for your project workflow</Text>
+                </Box>
                 <CanAccess permission="task_status-create">
                     <Link to={ROUTES.CREATE_TASK_STATUS}>
-                        <Button leftIcon={<FiPlus />} colorScheme="brand">Create Task Status</Button>
+                        <Button 
+                            leftIcon={<FiPlus />} 
+                            colorScheme="brand" 
+                            size="lg" 
+                            shadow="md"
+                            _hover={{ shadow: 'lg', transform: 'translateY(-1px)' }}
+                            transition="all 0.2s"
+                        >
+                            Create Task Status
+                        </Button>
                     </Link>
                 </CanAccess>
             </Flex>
 
-            <Flex mb={4}>
+            <Flex mb={6}>
                 <SearchBar
                     placeholder="Search status..."
                     value={searchTerm}

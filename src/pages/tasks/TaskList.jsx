@@ -2,6 +2,7 @@ import Pagination from '../../components/common/Pagination';
 import {
     Box,
     Heading,
+    Text,
     Flex,
     Button,
     IconButton,
@@ -356,10 +357,13 @@ const TaskList = ({ category = 'TASK' }) => {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <Box>
+        <Box maxW="1500px" mx="auto" py={4}>
             {/* ── Header ──────────────────────────────────────────────────── */}
-            <Flex justify="space-between" align="center" mb={6}>
-                <Heading size="lg">{titleText}</Heading>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">{titleText}</Heading>
+                    <Text color="gray.500" mt={1}>Track and manage your {itemName}s and project progress</Text>
+                </Box>
                 <HStack spacing={3}>
                     {/* View toggle */}
                     <HStack
@@ -410,7 +414,7 @@ const TaskList = ({ category = 'TASK' }) => {
             </Flex>
 
             {/* ── Filters / Search ─────────────────────────────────────────── */}
-            <Flex mb={4} gap={4} wrap="wrap">
+            <Flex mb={6} gap={4} wrap="wrap">
                 <Box flex="1" minW="200px">
                     <SearchBar
                         placeholder={`Search ${itemName}s...`}

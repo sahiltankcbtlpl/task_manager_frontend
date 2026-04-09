@@ -15,10 +15,17 @@ const TableSelect = ({ value, options, onChange, isDisabled, placeholder, isLoad
                     size="sm"
                     variant="outline"
                     bg="white"
-                    borderColor="gray.200"
-                    _hover={{ borderColor: 'gray.300' }}
-                    _focus={{ borderColor: 'brand.500', boxShadow: 'none' }}
-                    iconColor="gray.400"
+                    borderRadius="lg"
+                    borderColor="gray.100"
+                    shadow="xs"
+                    fontWeight="medium"
+                    _hover={{ borderColor: 'brand.200', shadow: 'sm' }}
+                    _focus={{ 
+                        borderColor: 'brand.500', 
+                        boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' 
+                    }}
+                    transition="all 0.2s"
+                    iconColor="brand.400"
                 >
                     {options.map((option) => (
                         <option key={option.value} value={option.value}>

@@ -17,33 +17,44 @@ import PropTypes from 'prop-types';
 const DataTable = ({ columns, data, isLoading, emptyMessage = "No data found", pagination }) => {
     return (
         <Box>
-            <Box bg="white" shadow="md" borderRadius="lg" overflowX="auto">
+            <Box bg="white" shadow="sm" borderRadius="xl" border="1px" borderColor="gray.100" overflowX="auto">
                 <Table variant="simple">
-                    <Thead bg="gray.50">
+                    <Thead bg="brand.50">
                         <Tr>
                             {columns.map((col, index) => (
-                                <Th key={index}>{col.header}</Th>
+                                <Th 
+                                    key={index} 
+                                    py={4} 
+                                    fontSize="xs" 
+                                    color="brand.700" 
+                                    textTransform="uppercase" 
+                                    letterSpacing="wider"
+                                >
+                                    {col.header}
+                                </Th>
                             ))}
                         </Tr>
                     </Thead>
                     <Tbody>
                         {isLoading ? (
-                            // Render skeleton rows when loading
                             Array.from({ length: Math.max(1, pagination?.pageSize || 5) }).map((_, rowIndex) => (
                                 <Tr key={`skeleton-${rowIndex}`}>
                                     {columns.map((_, colIndex) => (
-                                        <Td key={`skeleton-${rowIndex}-${colIndex}`}>
+                                        <Td key={`skeleton-${rowIndex}-${colIndex}`} py={4}>
                                             <Skeleton height="20px" borderRadius="md" w={colIndex === 0 ? "80%" : "60%"} />
                                         </Td>
                                     ))}
                                 </Tr>
                             ))
                         ) : data && data.length > 0 ? (
-                            // Render actual data rows
                             data.map((row, rowIndex) => (
-                                <Tr key={row._id || rowIndex}>
+                                <Tr 
+                                    key={row._id || rowIndex}
+                                    _hover={{ bg: "gray.50" }}
+                                    transition="background 0.2s"
+                                >
                                     {columns.map((col, colIndex) => (
-                                        <Td key={`${rowIndex}-${colIndex}`}>
+                                        <Td key={`${rowIndex}-${colIndex}`} py={4}>
                                             {col.render
                                                 ? col.render(row)
                                                 : row[col.accessor]}
@@ -52,10 +63,9 @@ const DataTable = ({ columns, data, isLoading, emptyMessage = "No data found", p
                                 </Tr>
                             ))
                         ) : (
-                            // Empty state within the table body (fallback if outer !data condition didn't catch it)
                             <Tr>
-                                <Td colSpan={columns.length} textAlign="center">
-                                    <Text color="gray.500">{emptyMessage}</Text>
+                                <Td colSpan={columns.length} textAlign="center" py={10}>
+                                    <Text color="gray.500" fontWeight="medium">{emptyMessage}</Text>
                                 </Td>
                             </Tr>
                         )}

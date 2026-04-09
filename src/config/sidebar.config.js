@@ -1,4 +1,4 @@
-import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder, FiAlertCircle, FiFileText, FiPackage } from 'react-icons/fi';
+import { FiHome, FiCheckSquare, FiUsers, FiTag, FiBriefcase, FiLock, FiFolder, FiAlertCircle, FiFileText, FiPackage, FiSettings } from 'react-icons/fi';
 import { ROUTES } from './routes.config';
 
 export const SIDEBAR_ITEMS = [
@@ -58,16 +58,21 @@ export const SIDEBAR_ITEMS = [
         permission: 'roles-read',
     },
     {
-        label: 'Company Settings',
-        icon: FiBriefcase,
-        to: ROUTES.COMPANY_SETTINGS,
-        ownerOnly: true, // Specifically limited to Company Owner
-    },
-    {
-        label: 'My Subscription',
-        icon: FiPackage,
-        to: '/settings/subscription',
+        label: 'Settings',
+        icon: FiSettings,
         ownerOnly: true,
+        children: [
+            {
+                label: 'Company Settings',
+                icon: FiBriefcase,
+                to: ROUTES.COMPANY_SETTINGS,
+            },
+            {
+                label: 'My Subscription',
+                icon: FiPackage,
+                to: '/settings/subscription',
+            },
+        ]
     },
     {
         label: 'Permissions',

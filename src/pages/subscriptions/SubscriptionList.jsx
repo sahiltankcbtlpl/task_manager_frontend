@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     Box,
     Heading,
+    Flex,
     Button,
     HStack,
     Badge,
@@ -153,22 +154,29 @@ const SubscriptionList = () => {
     ];
 
     return (
-        <Box>
-            <HStack justifyContent="space-between" mb={6}>
-                <Heading size="lg">Subscription Plans</Heading>
+        <Box maxW="1200px" mx="auto" py={4}>
+            <Flex justify="space-between" align="center" mb={8}>
+                <Box>
+                    <Heading size="lg" color="gray.800">Subscription Plans</Heading>
+                    <Text color="gray.500" mt={1}>Manage your company subscription plans and module limits</Text>
+                </Box>
                 <CanAccess permission="subscriptions-create">
-                    <Button
-                        leftIcon={<FiPlus />}
-                        colorScheme="brand"
-                        as={Link}
-                        to={ROUTES.CREATE_SUBSCRIPTION}
-                    >
-                        Create Plan
-                    </Button>
+                    <Link to={ROUTES.CREATE_SUBSCRIPTION}>
+                        <Button 
+                            leftIcon={<FiPlus />} 
+                            colorScheme="brand" 
+                            size="lg" 
+                            shadow="md"
+                            _hover={{ shadow: 'lg', transform: 'translateY(-1px)' }}
+                            transition="all 0.2s"
+                        >
+                            Create Plan
+                        </Button>
+                    </Link>
                 </CanAccess>
-            </HStack>
+            </Flex>
 
-            <Box mb={4}>
+            <Box mb={6}>
                 <SearchBar
                     placeholder="Search plans..."
                     value={searchTerm}
